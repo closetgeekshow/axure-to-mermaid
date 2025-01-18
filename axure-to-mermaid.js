@@ -1,14 +1,34 @@
+/**
+ * @file Axure sitemap to Mermaid diagram converter
+ * @module SitemapGenerator
+ * @requires $axure
+ */
+
 if (typeof $axure !== "undefined") {
-  /* Configuration Start */
+  /**
+   * @typedef {Object} Project
+   * @property {string} name - Project name from Axure configuration
+   * @property {string} id - Project ID from Axure configuration
+   */
   const project = {
     "name": $axure.document.configuration.projectName,
     "id": $axure.document.configuration.projectId
   }
-  /* Configuration End */
-  
+
+  /**
+   * @constant {Array} sitemapArray
+   * Root nodes of the Axure sitemap structure
+   */
   const sitemapArray = $axure.document.sitemap.rootNodes;
     
-  // Process sitemap into flat array with level info
+  /**
+   * Processes sitemap nodes into a flat array with level information
+   * @param {Array} nodes - Array of sitemap nodes
+   * @param {number} [level=1] - Current hierarchy level
+   * @param {string|null} [parentId=null] - ID of parent node
+   * @param {Array} [result=[]] - Accumulator for processed nodes
+   * @returns {Array} Flattened array of nodes with hierarchy info
+   */
   function processSitemap(nodes, level = 1, parentId = null, result = []) {
     nodes.forEach(node => {
       const nodeId = node.id || `folder_${Math.random().toString(36).substr(2, 7)}`;
@@ -27,16 +47,18 @@ if (typeof $axure !== "undefined") {
     return result;
   }
 
-  // Generate Mermaid markup
+  /**
+   * Generates Mermaid markup from processed sitemap nodes
+   * @param {Array} nodes - Processed sitemap nodes
+   * @returns {string} Mermaid diagram markup
+   */
   function generateMermaidMarkup(nodes) {
     let mermaidText = `---\nconfig:\n  title: ${project.name} Sitemap\n---\n\ngraph TD\n  classDef containers fill:transparent,stroke-width:0\n\n`;
         
-    // Group nodes by level
     const maxLevel = Math.max(...nodes.map(n => n.level));
         
     for (let level = 1; level <= maxLevel; level++) {
       const tierNodes = nodes.filter(n => n.level === level);
-            
       mermaidText += `  subgraph tier${level}[" "]\n`;
             
       tierNodes.forEach(node => {
@@ -55,22 +77,11 @@ if (typeof $axure !== "undefined") {
     return mermaidText;
   }
 
-  // Main execution
-  const processedNodes = processSitemap(sitemapArray);
-  console.dir(processedNodes);
-  const mermaidText = generateMermaidMarkup(processedNodes);
-
-  // Find first textarea with data-label containing "mermaid text"
-  const mermaidTextarea = document.querySelector('[data-label*="mermaid text"] textarea');
-  
-  if (mermaidTextarea) {
-    // If found, update textarea value
-    mermaidTextarea.value = mermaidText;
-  } else {
-    // Fall back to clipboard copy
-    copyToClipboard(mermaidText);
-  }
-
+  /**
+   * Copies text to clipboard using a temporary textarea
+   * @private
+   * @param {string} copyText - Text to copy to clipboard
+   */
   function copyToClipboard(copyText) {
     const textarea = document.createElement("textarea");
     textarea.value = copyText;
@@ -78,5 +89,18 @@ if (typeof $axure !== "undefined") {
     textarea.select();
     document.execCommand("copy");
     document.body.removeChild(textarea);
+  }
+
+  // Main execution
+  const processedNodes = processSitemap(sitemapArray);
+  console.dir(processedNodes);
+  const mermaidText = generateMermaidMarkup(processedNodes);
+
+  const mermaidTextarea = document.querySelector('[data-label*="mermaid text"] textarea');
+  
+  if (mermaidTextarea) {
+    mermaidTextarea.value = mermaidText;
+  } else {
+    copyToClipboard(mermaidText);
   }
 }
