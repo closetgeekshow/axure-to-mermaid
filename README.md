@@ -1,4 +1,4 @@
-# AxureCopySitemap    
+# axure-to-mermaid 
 This script is designed to be used with [Axure RP](https://axure.com) (a phenomenal wireframing tool) prototypes, when it is run it will copy your published sitemap tree as a mermaid flowchart to your clipboard. 
 
 ## What is it
