@@ -15,7 +15,7 @@
     "build:dev": "esbuild axure-to-mermaid.js --bundle --outfile=./dist/axure-to-mermaid.js",
     "build:esm": "esbuild axure-to-mermaid.js --bundle --format=esm --tree-shaking --outfile=./dist/axure-to-mermaid.esm.js",
     "build:min": "esbuild axure-to-mermaid.js --bundle --minify --format=esm --tree-shaking --outfile=./dist/axure-to-mermaid.esm.min.js",
-    "build:iife": "esbuild axure-to-mermaid.js --bundle --format=iife --minify --outfile=./dist/axure-to-mermaid.iife.min.js",
+    "build:iife": "esbuild axure-to-mermaid-injected.js --bundle --format=iife --minify --outfile=./dist/axure-to-mermaid.iife.min.js",
     "build": "npm run build:dev && npm run build:esm && npm run build:min && npm run build:iife && npm run size-report",
     "size-report": "ls -lh ./dist | awk 'BEGIN {print \"Size\\tFile\\n----\\t----\"} NR>1 {print $5\"\\t\"$9}' | column -t"
   
