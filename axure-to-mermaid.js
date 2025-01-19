@@ -4,6 +4,11 @@
  * @requires $axure
  */
 
+import { deflate } from 'pako/dist/pako.esm.mjs';
+import { fromUint8Array } from 'js-base64';
+;
+
+
 if (typeof $axure !== "undefined") {
   /**
    * Helper function to create and style elements
@@ -184,23 +189,13 @@ if (typeof $axure !== "undefined") {
       border: '1px solid #ccc',
       zIndex: '1000',
       display: 'flex',
-      flexDirection: 'column',
-      gap: '5px'
+      flexDirection: 'row',
+      gap: '0.125rem'
     }
   });
 
   // Add "X" button to the toolbar
   const closeButton = createElement('button', 'X', {
-    style: {
-      position: 'absolute',
-      top: '0',
-      right: '0',
-      background: 'transparent',
-      border: 'none',
-      cursor: 'pointer',
-      fontWeight: 'bold',
-      color: '#999'
-    },
     onclick: unloadScript
   });
 
@@ -215,7 +210,24 @@ if (typeof $axure !== "undefined") {
 
   const startHereButton = createElement('button', 'Start Here', {
     onclick: () => {
-      const selectedNode = $axure.document.getSelectedItem();
+      const currentId = $axure.page.shortId;
+      const findCurrentNode = (nodes, currentId) => {
+        for (const node of nodes) {
+          console.log('Checking node:', node.id, node.pageName);
+          if (node.id === currentId) {
+            return node;
+          }
+          if (node.children) {
+            const found = findCurrentNode(node.children);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+  
+      const selectedNode = findCurrentNode(sitemapArray, currentId);
+      console.log('Found node:', selectedNode);
+      
       if (selectedNode) {
         const processedNodes = processSitemap([selectedNode]);
         const mermaidText = generateMermaidMarkup(processedNodes);
@@ -223,17 +235,20 @@ if (typeof $axure !== "undefined") {
       }
     }
   });
+  
 
-  const txtButton = createElement('button', 'Txt', { disabled: true });
-  const svgButton = createElement('button', 'SVG', { disabled: true });
-  const pngButton = createElement('button', 'PNG', { disabled: true });
 
-  toolbar.appendChild(closeButton);
+  const txtButton = createElement('button', '📄Txt', { disabled: true });
+  const svgUrlButton = createElement('button', '🕸SVG', { disabled: true });
+  const pngUrlButton = createElement('button', '🕸PNG', { disabled: true });
+
   toolbar.appendChild(allButton);
   toolbar.appendChild(startHereButton);
   toolbar.appendChild(txtButton);
-  toolbar.appendChild(svgButton);
-  toolbar.appendChild(pngButton);
+  toolbar.appendChild(svgUrlButton);
+  toolbar.appendChild(pngUrlButton);
+  toolbar.appendChild(closeButton);
+  
   document.body.appendChild(toolbar);
 
   // Main execution
@@ -242,20 +257,32 @@ if (typeof $axure !== "undefined") {
 
   // Enable buttons after processing
   txtButton.disabled = false;
-  svgButton.disabled = false;
-  pngButton.disabled = false;
+  svgUrlButton.disabled = false;
+  pngUrlButton.disabled = false;
 
   txtButton.onclick = () => {
     downloadFile(mermaidText, 'sitemap.txt', 'text/plain');
   };
 
-  svgButton.onclick = () => {
-    const svgContent = document.querySelector('svg').outerHTML;
-    downloadFile(svgContent, 'sitemap.svg', 'image/svg+xml');
+  // Add these utility functions
+  function serializeMermaid(mermaidText) {
+    // Convert string to Uint8Array
+    const data = new TextEncoder().encode(mermaidText);
+    // Compress with pako at max level
+    const compressed = deflate(data, { level: 9 });
+    // Convert to base64 URL-safe string
+    return fromUint8Array(compressed, true);
+  }
+
+  // Modify the button handlers
+  svgUrlButton.onclick = () => {
+    const encoded = serializeMermaid(mermaidText);
+    const svgUrl = `https://mermaid.ink/svg/pako:${encoded}`;
+    downloadFile(svgUrl, 'mermaid.svg', 'image/svg+xml');
   };
 
-  pngButton.onclick = () => {
-    const svgContent = document.querySelector('svg').outerHTML;
-    convertSvgToPng(svgContent, 'sitemap.png');
-  };
-}
+  pngUrlButton.onclick = () => {
+    const encoded = serializeMermaid(mermaidText);
+    const pngUrl = `https://mermaid.ink/img/pako:${encoded}?type=png`;
+    downloadFile(pngUrl, 'mermaid.png', 'image/png');
+  };}

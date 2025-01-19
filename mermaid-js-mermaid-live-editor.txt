@@ -1,0 +1,2078 @@
+Directory structure:
+└── src/
+    ├── app.html
+    ├── app.postcss
+    ├── global.d.ts
+    ├── hooks.ts
+    ├── lib/
+    │   ├── types.d.ts
+    │   ├── components/
+    │   │   ├── actions.svelte
+    │   │   ├── editor.svelte
+    │   │   ├── navbar.svelte
+    │   │   ├── preset.svelte
+    │   │   ├── theme.svelte
+    │   │   ├── view.svelte
+    │   │   ├── card/
+    │   │   │   ├── card.svelte
+    │   │   │   └── tabs.svelte
+    │   │   └── history/
+    │   │       ├── history.svelte
+    │   │       └── history.ts
+    │   └── util/
+    │       ├── env.ts
+    │       ├── error.ts
+    │       ├── loading.ts
+    │       ├── notify.ts
+    │       ├── serde.ts
+    │       ├── state.ts
+    │       ├── stats.ts
+    │       ├── theme.ts
+    │       ├── util.ts
+    │       └── fileLoaders/
+    │           ├── gist.ts
+    │           └── loader.ts
+    └── routes/
+        ├── __layout.svelte
+        ├── edit.svelte
+        ├── index.svelte
+        ├── manifest.json.ts
+        ├── view.svelte
+        └── [fallback]/
+            └── manifest.json.ts
+
+================================================
+File: src/app.html
+================================================
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Online FlowChart &amp; Diagrams Editor - Mermaid Live Editor</title>
+		<meta
+			name="og:image"
+			content="https://github.com/mermaid-js/mermaid/raw/develop/img/header.png" />
+		<link rel="canonical" href="https://mermaid.live" />
+		<meta
+			name="description"
+			content="Simplify documentation and avoid heavy tools. Open source Visio Alternative. Commonly used for explaining your code! Mermaid is a simple markdown-like script language for generating charts from text via javascript." />
+		<link rel="icon" type="image/png" href="favicon.png" />
+		<link rel="manifest" href="manifest.json" />
+		<link
+			rel="stylesheet"
+			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.2/css/all.min.css" />
+		<link
+			rel="stylesheet"
+			href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.31.1/min/vs/editor/editor.main.min.css"
+			crossorigin="anonymous"
+			referrerpolicy="no-referrer" />
+		<script>
+			var require = {
+				paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.31.1/min/vs' }
+			};
+		</script>
+		<script
+			src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.31.1/min/vs/loader.min.js"
+			crossorigin="anonymous"
+			referrerpolicy="no-referrer"></script>
+		<script
+			src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.31.1/min/vs/editor/editor.main.nls.min.js"
+			crossorigin="anonymous"
+			referrerpolicy="no-referrer"></script>
+		<script
+			src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.31.1/min/vs/editor/editor.main.js"
+			crossorigin="anonymous"
+			referrerpolicy="no-referrer"></script>
+
+		%svelte.head%
+	</head>
+	<body>
+		<div id="svelte">%svelte.body%</div>
+	</body>
+</html>
+
+
+================================================
+File: src/app.postcss
+================================================
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.input {
+	@apply flex-1 border-primary border-solid border-2 rounded;
+}
+.action-btn {
+	@apply btn btn-primary;
+}
+
+
+================================================
+File: src/global.d.ts
+================================================
+/// <reference types="@sveltejs/kit" />
+
+
+================================================
+File: src/hooks.ts
+================================================
+import type { Handle } from '@sveltejs/kit/types/hooks';
+
+export const handle: Handle = async ({ event, resolve }) => {
+	const response = await resolve(event, {
+		ssr: false
+	});
+
+	return response;
+};
+
+
+================================================
+File: src/lib/types.d.ts
+================================================
+/**
+ * Can be made globally available by placing this
+ * inside `global.d.ts` and removing `export` keyword
+ */
+export interface Locals {
+	userid: string;
+}
+
+export interface EditorUpdateEvent {
+	text: string;
+}
+export interface EditorEvents {
+	update: EditorUpdateEvent;
+}
+
+export interface TabEvents {
+	select: Tab;
+}
+
+export interface Tab {
+	id: string;
+	title: string;
+	icon: string;
+}
+
+export interface State {
+	code: string;
+	mermaid: string;
+	updateEditor: boolean;
+	updateDiagram: boolean;
+	autoSync: boolean;
+	loader?: LoaderConfig;
+}
+
+export interface GistLoaderConfig {
+	url: string;
+}
+
+export interface LoadingState {
+	loading: boolean;
+	message?: string;
+}
+export interface FileLoaderConfig {
+	codeURL: string;
+	configURL?: string;
+}
+export interface LoaderConfig {
+	type: 'gist' | 'files';
+	config: GistLoaderConfig | FileLoaderConfig;
+}
+export type HistoryType = 'auto' | 'manual' | 'loader';
+export interface HistoryEntry {
+	state: State;
+	time: number;
+	name?: string;
+	type: HistoryType;
+	url?: string;
+}
+
+type Loader = (url: string) => Promise<State>;
+
+
+================================================
+File: src/lib/components/actions.svelte
+================================================
+<script lang="ts">
+	import { browser } from '$app/env';
+
+	import Card from '$lib/components/card/card.svelte';
+	import { krokiRendererUrl, rendererUrl } from '$lib/util/env';
+	import { pakoSerde } from '$lib/util/serde';
+	import { serializedState, codeStore } from '$lib/util/state';
+	import { toBase64 } from 'js-base64';
+	import moment from 'moment';
+
+	type Exporter = (context: CanvasRenderingContext2D, image: HTMLImageElement) => () => void;
+
+	const getBase64SVG = (svg?: HTMLElement, width?: number, height?: number): string => {
+		svg?.setAttribute('height', `${height}px`);
+		svg?.setAttribute('width', `${width}px`); // Workaround https://stackoverflow.com/questions/28690643/firefox-error-rendering-an-svg-image-to-html5-canvas-with-drawimage
+		if (!svg) {
+			svg = document.querySelector('#container svg');
+		}
+		const svgString = svg.outerHTML
+			.replaceAll('<br>', '<br/>')
+			.replaceAll(/<img([^>]*)>/g, (m, g: string) => `<img ${g} />`);
+		return toBase64(svgString);
+	};
+
+	const exportImage = (event: Event, exporter: Exporter) => {
+		const canvas: HTMLCanvasElement = document.createElement('canvas');
+		const svg: HTMLElement = document.querySelector('#container svg');
+		const box: DOMRect = svg.getBoundingClientRect();
+		canvas.width = box.width;
+		canvas.height = box.height;
+		if (imagemodeselected === 'width') {
+			const ratio = box.height / box.width;
+			canvas.width = userimagesize;
+			canvas.height = userimagesize * ratio;
+		} else if (imagemodeselected === 'height') {
+			const ratio = box.width / box.height;
+			canvas.width = userimagesize * ratio;
+			canvas.height = userimagesize;
+		}
+
+		const context = canvas.getContext('2d');
+		context.fillStyle = 'white';
+		context.fillRect(0, 0, canvas.width, canvas.height);
+
+		const image = new Image();
+		image.onload = exporter(context, image);
+		image.src = `data:image/svg+xml;base64,${getBase64SVG(svg, canvas.width, canvas.height)}`;
+
+		event.stopPropagation();
+		event.preventDefault();
+	};
+
+	const simulateDownload = (download: string, href: string): void => {
+		const a = document.createElement('a');
+		a.download = download;
+		a.href = href;
+		a.click();
+		a.remove();
+	};
+	const downloadImage: Exporter = (context, image) => {
+		return () => {
+			const { canvas } = context;
+			context.drawImage(image, 0, 0, canvas.width, canvas.height);
+			simulateDownload(
+				`mermaid-diagram-${moment().format('YYYYMMDDHHmmss')}.png`,
+				canvas.toDataURL('image/png').replace('image/png', 'image/octet-stream')
+			);
+		};
+	};
+
+	const isClipboardAvailable = (): boolean => {
+		return Object.prototype.hasOwnProperty.call(window, 'ClipboardItem') as boolean;
+	};
+
+	const clipboardCopy: Exporter = (context, image) => {
+		return () => {
+			const { canvas } = context;
+			context.drawImage(image, 0, 0, canvas.width, canvas.height);
+			canvas.toBlob((blob) => {
+				try {
+					// @ts-ignore: https://github.com/microsoft/TypeScript-DOM-lib-generator/pull/1004/files
+					void navigator.clipboard.write([
+						/* eslint-disable no-undef */
+						// @ts-ignore: https://github.com/microsoft/TypeScript/issues/43821
+						new ClipboardItem({
+							[blob.type]: blob
+						})
+					]);
+				} catch (error) {
+					console.error(error);
+				}
+			});
+		};
+	};
+
+	const onCopyClipboard = (event: Event) => {
+		exportImage(event, clipboardCopy);
+	};
+
+	const onDownloadPNG = (event: Event) => {
+		exportImage(event, downloadImage);
+	};
+
+	const onDownloadSVG = () => {
+		simulateDownload(
+			`mermaid-diagram-${moment().format('YYYYMMDDHHmmss')}.svg`,
+			`data:image/svg+xml;base64,${getBase64SVG()}`
+		);
+	};
+
+	const onCopyMarkdown = () => {
+		(document.getElementById('markdown') as HTMLInputElement).select();
+		document.execCommand('Copy');
+	};
+
+	let gistURL = '';
+	codeStore.subscribe((state) => {
+		if (state.loader?.type === 'gist') {
+			// @ts-ignore Gist will have url
+			gistURL = state.loader.config.url;
+		}
+	});
+
+	const loadGist = () => {
+		if (!gistURL) {
+			alert('Please enter a Gist URL first');
+		}
+		window.location.href = `${window.location.pathname}?gist=${gistURL}`;
+	};
+
+	let iUrl: string;
+	let svgUrl: string;
+	let krokiUrl: string;
+	let mdCode: string;
+	let imagemodeselected = 'auto';
+	let userimagesize = 1080;
+
+	let isNetlify = false;
+	if (browser && ['mermaid.live', 'netlify'].some((path) => window.location.host.includes(path))) {
+		isNetlify = true;
+	}
+	serializedState.subscribe((encodedState: string) => {
+		iUrl = `${rendererUrl}/img/${encodedState}`;
+		svgUrl = `${rendererUrl}/svg/${encodedState}`;
+		krokiUrl = `${krokiRendererUrl}/mermaid/svg/${pakoSerde.serialize($codeStore.code)}`;
+		mdCode = `[![](${iUrl})](${window.location.protocol}//${window.location.host}${window.location.pathname}#${encodedState})`;
+	});
+</script>
+
+<Card title="Actions" isOpen={true}>
+	<div class="flex flex-wrap gap-2 m-2">
+		{#if isClipboardAvailable()}
+			<button class="action-btn w-full" on:click={onCopyClipboard}
+				><i class="far fa-copy mr-2" /> Copy Image to clipboard
+			</button>
+		{/if}
+		<button class="action-btn flex-auto" on:click={onDownloadPNG}>
+			<i class="fas fa-download mr-2" /> PNG
+		</button>
+		<button class="action-btn flex-auto" on:click={onDownloadSVG}>
+			<i class="fas fa-download mr-2" /> SVG
+		</button>
+		<button class="action-btn flex-auto">
+			<a target="_blank" href={iUrl}><i class="fas fa-external-link-alt mr-2" /> PNG</a>
+		</button>
+		<button class="action-btn flex-auto">
+			<a target="_blank" href={svgUrl}><i class="fas fa-external-link-alt mr-2" /> SVG</a>
+		</button>
+		<button class="action-btn flex-auto">
+			<a target="_blank" href={krokiUrl}><i class="fas fa-external-link-alt mr-2" /> Kroki</a>
+		</button>
+
+		<div class="flex gap-2 items-center">
+			PNG size
+			<label for="autosize">
+				<input type="radio" value="auto" id="autosize" bind:group={imagemodeselected} /> Auto
+			</label>
+
+			<label for="width">
+				<input type="radio" value="width" id="width" bind:group={imagemodeselected} /> Width
+			</label>
+
+			<label for="height">
+				<input type="radio" value="height" id="height" bind:group={imagemodeselected} /> Height
+			</label>
+
+			{#if imagemodeselected !== 'auto'}
+				<input
+					id="height"
+					class="input"
+					type="number"
+					min="3"
+					max="10000"
+					bind:value={userimagesize} />
+			{/if}
+		</div>
+
+		<div class="w-full flex gap-2 items-center">
+			<input class="input" id="markdown" type="text" value={mdCode} on:click={onCopyMarkdown} />
+			<label for="markdown">
+				<button class="btn btn-primary btn-md flex-auto" on:click={onCopyMarkdown}>
+					Copy Markdown
+				</button>
+			</label>
+		</div>
+
+		<div class="w-full flex gap-2 items-center">
+			<input
+				class="input"
+				id="gist"
+				type="text"
+				bind:value={gistURL}
+				placeholder="Enter Gist URL" />
+			<label for="gist">
+				<button class="btn btn-primary btn-md flex-auto" on:click={loadGist}> Load Gist </button>
+			</label>
+		</div>
+		{#if isNetlify}
+			<div class="w-full flex items-center justify-center">
+				<a class="link underline text-gray-500 text-sm" href="https://netlify.com">
+					This site is powered by Netlify
+				</a>
+			</div>
+		{/if}
+	</div>
+</Card>
+
+
+================================================
+File: src/lib/components/editor.svelte
+================================================
+<script lang="ts">
+	import type { EditorEvents } from '$lib/types';
+	import { codeStore } from '$lib/util/state';
+	import { themeStore } from '$lib/util/theme';
+	import type monaco from 'monaco-editor';
+	import { createEventDispatcher, onMount } from 'svelte';
+	import initEditor from 'monaco-mermaid';
+
+	let divEl: HTMLDivElement = null;
+	let editor: monaco.editor.IStandaloneCodeEditor;
+	let Monaco;
+
+	export let text: string;
+	export let language: string;
+	export let editorOptions: monaco.editor.IStandaloneEditorConstructionOptions = {
+		value: text,
+		language: language,
+		minimap: {
+			enabled: false
+		},
+		theme: 'mermaid',
+		overviewRulerLanes: 0
+	};
+	export let errorMarkers: monaco.editor.IMarkerData[] = [];
+	let oldText = text;
+	$: editor && Monaco?.editor.setModelLanguage(editor.getModel(), language);
+	$: {
+		if (text !== oldText) {
+			if ($codeStore.updateEditor) {
+				editor?.setValue(text);
+			}
+			oldText = text;
+		}
+		editor && Monaco?.editor.setModelMarkers(editor.getModel(), 'test', errorMarkers);
+	}
+
+	themeStore.subscribe(({ isDark }) => {
+		editor && Monaco?.editor.setTheme(isDark ? 'mermaid-dark' : 'mermaid');
+	});
+
+	const dispatch = createEventDispatcher<EditorEvents>();
+	const loadMonaco = async () => {
+		let i = 0;
+		while (i++ < 10) {
+			try {
+				// @ts-ignore : This is a hack to handle a svelte-kit error when importing monaco.
+				Monaco = monaco;
+				return;
+			} catch {
+				await new Promise((r) => setTimeout(r, 500));
+			}
+		}
+		alert('Loading Monaco Editor failed. Please try refreshing the page.');
+	};
+	onMount(async () => {
+		try {
+			// @ts-ignore : This is a hack to handle a svelte-kit error when importing monaco.
+			Monaco = monaco;
+		} catch {
+			await loadMonaco(); // Fix https://github.com/mermaid-js/mermaid-live-editor/issues/175
+		}
+		initEditor(Monaco);
+		editor = Monaco.editor.create(divEl, editorOptions);
+		editor.onDidChangeModelContent(() => {
+			text = editor.getValue();
+			dispatch('update', {
+				text
+			});
+		});
+		Monaco?.editor.setTheme($themeStore.isDark ? 'mermaid-dark' : 'mermaid');
+		const resizeObserver = new ResizeObserver((entries) => {
+			editor.layout({
+				height: entries[0].contentRect.height,
+				width: entries[0].contentRect.width
+			});
+		});
+
+		resizeObserver.observe(divEl.parentElement);
+		return () => {
+			editor.dispose();
+		};
+	});
+</script>
+
+<div bind:this={divEl} id="editor" class="overflow-hidden" />
+
+
+================================================
+File: src/lib/components/navbar.svelte
+================================================
+<script context="module">
+	import { version } from 'mermaid/package.json';
+	import { analytics } from '$lib/util/stats';
+	analytics?.track('version', {
+		mermaidVersion: version
+	});
+</script>
+
+<script lang="ts">
+	import Theme from './theme.svelte';
+
+	interface Link {
+		title: string;
+		href: string;
+		icon?: string;
+	}
+	const links: Link[] = [
+		{
+			title: 'Documentation',
+			href: 'https://mermaid-js.github.io/mermaid/#/n00b-gettingStarted'
+		},
+		{
+			title: 'Tutorial',
+			href: 'https://github.com/mermaid-js/mermaid/blob/develop/docs/Tutorials.md'
+		},
+		{
+			title: 'Mermaid',
+			href: 'https://github.com/mermaid-js/mermaid'
+		},
+		{
+			title: 'CLI',
+			href: 'https://github.com/mermaid-js/mermaid-cli'
+		},
+		{
+			title: '',
+			href: 'https://github.com/mermaid-js/mermaid-live-editor',
+			icon: 'fab fa-github fa-lg'
+		}
+	];
+</script>
+
+<div class="navbar mb-2 shadow-lg bg-primary">
+	<div class="flex-1 px-2 mx-2">
+		<span class="text-lg font-bold">
+			<a href="/">Mermaid<span class="text-xs font-thin">v{version}</span> Live Editor</a>
+		</span>
+	</div>
+	<label for="menu-toggle" class="pointer-cursor lg:hidden block"
+		><svg
+			class="fill-current "
+			xmlns="http://www.w3.org/2000/svg"
+			width="20"
+			height="20"
+			viewBox="0 0 20 20"
+			><title>Menu</title><path d="M0 3h20v2H0V3zm0 6h20v2H0V9zm0 6h20v2H0v-2z" /></svg
+		></label>
+	<input class="hidden" type="checkbox" id="menu-toggle" />
+
+	<Theme />
+	<div class="hidden lg:flex lg:items-center lg:w-auto w-full" id="menu">
+		<ul class="lg:flex items-center justify-between text-base pt-4 lg:pt-0">
+			{#each links as { title, href, icon }}
+				<li>
+					<a class="btn btn-ghost" target="_blank" {href}>
+						{#if icon}
+							<i class={icon} />
+						{/if}
+						{title}</a>
+				</li>
+			{/each}
+		</ul>
+	</div>
+</div>
+
+<style>
+	#menu-toggle:checked + #menu {
+		display: block;
+	}
+	.navbar {
+		z-index: 10000;
+	}
+</style>
+
+
+================================================
+File: src/lib/components/preset.svelte
+================================================
+<script lang="ts">
+	import { updateCode } from '$lib/util/state';
+	import Card from '$lib/components/card/card.svelte';
+
+	const samples = {
+		'Flow Chart': `graph TD
+    A[Christmas] -->|Get money| B(Go shopping)
+    B --> C{Let me think}
+    C -->|One| D[Laptop]
+    C -->|Two| E[iPhone]
+    C -->|Three| F[fa:fa-car Car]`,
+		'Sequence Diagram': `sequenceDiagram
+    Alice->>+John: Hello John, how are you?
+    Alice->>+John: John, can you hear me?
+    John-->>-Alice: Hi Alice, I can hear you!
+    John-->>-Alice: I feel great!
+            `,
+		'Class Diagram': `classDiagram
+    Animal <|-- Duck
+    Animal <|-- Fish
+    Animal <|-- Zebra
+    Animal : +int age
+    Animal : +String gender
+    Animal: +isMammal()
+    Animal: +mate()
+    class Duck{
+      +String beakColor
+      +swim()
+      +quack()
+    }
+    class Fish{
+      -int sizeInFeet
+      -canEat()
+    }
+    class Zebra{
+      +bool is_wild
+      +run()
+    }
+            `,
+		'State Diagram': `stateDiagram-v2
+    [*] --> Still
+    Still --> [*]
+    Still --> Moving
+    Moving --> Still
+    Moving --> Crash
+    Crash --> [*]
+            `,
+		'Gantt Chart': `gantt
+    title A Gantt Diagram
+    dateFormat  YYYY-MM-DD
+    section Section
+    A task           :a1, 2014-01-01, 30d
+    Another task     :after a1  , 20d
+    section Another
+    Task in sec      :2014-01-12  , 12d
+    another task      : 24d
+            `,
+		'Pie Chart': `pie title Pets adopted by volunteers
+    "Dogs" : 386
+    "Cats" : 85
+    "Rats" : 15
+            `,
+		'ER Diagram': `erDiagram
+          CUSTOMER }|..|{ DELIVERY-ADDRESS : has
+          CUSTOMER ||--o{ ORDER : places
+          CUSTOMER ||--o{ INVOICE : "liable for"
+          DELIVERY-ADDRESS ||--o{ ORDER : receives
+          INVOICE ||--|{ ORDER : covers
+          ORDER ||--|{ ORDER-ITEM : includes
+          PRODUCT-CATEGORY ||--|{ PRODUCT : contains
+          PRODUCT ||--o{ ORDER-ITEM : "ordered in"
+            `,
+		'User Journey': `  journey
+    title My working day
+    section Go to work
+      Make tea: 5: Me
+      Go upstairs: 3: Me
+      Do work: 1: Me, Cat
+    section Go home
+      Go downstairs: 5: Me
+      Sit down: 3: Me
+      `
+	};
+
+	const loadSampleDiagram = (diagramType: string): void => {
+		updateCode(samples[diagramType], true, true);
+	};
+</script>
+
+<Card title="Sample Diagrams" isOpen={false}>
+	<div class="flex gap-2 flex-wrap p-2">
+		{#each Object.keys(samples) as sample}
+			<button class="btn btn-primary normal-case btn-sm" on:click={() => loadSampleDiagram(sample)}
+				>{sample}</button>
+		{/each}
+	</div>
+</Card>
+
+
+================================================
+File: src/lib/components/theme.svelte
+================================================
+<script>
+	import { setTheme, themeStore } from '$lib/util/theme';
+
+	const themes = [
+		'🌝  light',
+		'🌚  dark',
+		'🧁  cupcake',
+		'🐝  bumblebee',
+		'✳️  emerald',
+		'🏢  corporate',
+		'🌃  synthwave',
+		'👴  retro',
+		'🤖  cyberpunk',
+		'🌸  valentine',
+		'🎃  halloween',
+		'🌷  garden',
+		'🌲  forest',
+		'🐟  aqua',
+		'👓  lofi',
+		'🖍  pastel',
+		'🧚‍♀️  fantasy',
+		'📝  wireframe',
+		'🏴  black',
+		'💎  luxury',
+		'🧛‍♂️  dracula'
+	];
+</script>
+
+<div class="hidden lg:block dropdown">
+	<div tabindex="0" class="btn btn-ghost ">
+		<svg
+			xmlns="http://www.w3.org/2000/svg"
+			fill="none"
+			viewBox="0 0 24 24"
+			class="inline-block w-6 h-6 stroke-current md:mr-2"
+			><path
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				stroke-width="2"
+				d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>
+		<span class="hidden md:inline"> Change Theme </span>
+		<svg
+			xmlns="http://www.w3.org/2000/svg"
+			viewBox="0 0 1792 1792"
+			class="inline-block w-4 h-4 ml-1 fill-current"
+			><path
+				d="M1395 736q0 13-10 23l-466 466q-10 10-23 10t-23-10l-466-466q-10-10-10-23t10-23l50-50q10-10 23-10t23 10l393 393 393-393q10-10 23-10t23 10l50 50q10 10 10 23z" /></svg>
+	</div>
+	<div
+		class="mt-14 overflow-y-auto shadow-2xl top-px dropdown-content h-96 w-56 bg-base-200 text-base-content">
+		<ul tabindex="0" class="p-4 menu compact">
+			{#each themes as theme}
+				<li class={theme.includes($themeStore.theme) ? 'bordered' : ''}>
+					<span class="btn btn-ghost justify-start" on:click={() => setTheme(theme)}>{theme}</span>
+				</li>
+			{/each}
+		</ul>
+	</div>
+</div>
+
+
+================================================
+File: src/lib/components/view.svelte
+================================================
+<script lang="ts">
+	import { errorStore } from '$lib/util/error';
+
+	import { codeStore } from '$lib/util/state';
+	import { onMount } from 'svelte';
+	import mermaid from 'mermaid';
+
+	let code = '';
+	let config = '';
+	let container: HTMLDivElement;
+	let view: HTMLDivElement;
+	let error = false;
+	let outOfSync = false;
+	let manualUpdate = true;
+	onMount(() => {
+		codeStore.subscribe((state) => {
+			try {
+				if (container && state && (state.updateDiagram || state.autoSync)) {
+					if (!state.autoSync) {
+						$codeStore.updateDiagram = false;
+					}
+					outOfSync = false;
+					manualUpdate = true;
+					if (code === state.code && config === state.mermaid) {
+						// Do not render if there is no change in Code/Config
+						return;
+					}
+					code = state.code;
+					config = state.mermaid;
+					const scroll = view.parentElement.scrollTop;
+					delete container.dataset.processed;
+					mermaid.initialize(Object.assign({}, JSON.parse(state.mermaid)));
+					mermaid.render('graph-div', code, (svgCode) => {
+						container.innerHTML = svgCode;
+					});
+					view.parentElement.scrollTop = scroll;
+					error = false;
+				} else if (manualUpdate) {
+					manualUpdate = false;
+				} else {
+					outOfSync = true;
+				}
+			} catch (e) {
+				console.log('view fail', e);
+				error = true;
+			}
+		});
+		errorStore.subscribe((err) => {
+			if (typeof err === 'undefined') {
+				error = false;
+			} else {
+				error = true;
+				console.log('Error: ', err);
+			}
+		});
+	});
+</script>
+
+<div id="view" bind:this={view} class="p-2" class:error class:outOfSync>
+	<div id="container" bind:this={container} class="flex-1 overflow-auto" />
+</div>
+
+<style>
+	#view {
+		border: 1px solor darkred;
+		flex: 1;
+	}
+	.error,
+	.outOfSync {
+		opacity: 0.5;
+	}
+</style>
+
+
+================================================
+File: src/lib/components/card/card.svelte
+================================================
+<script lang="ts">
+	import type { Tab } from '$lib/types';
+	import { slide } from 'svelte/transition';
+	import Tabs from './tabs.svelte';
+	export let isCloseable = true;
+	export let isOpen = true;
+	export let tabs: Tab[] = [];
+	export let title: string;
+	$: isOpen = isCloseable ? isOpen : true;
+	$: isTabsShown = isOpen && tabs.length > 0;
+</script>
+
+<div class="card rounded overflow-hidden m-2 flex-grow flex flex-col shadow-2xl">
+	<div
+		class="bg-primary p-2 {isTabsShown ? 'pb-0' : ''} flex-none cursor-pointer"
+		on:click={() => (isOpen = !isOpen)}>
+		<div class="flex justify-between">
+			<Tabs on:select {tabs} bind:isOpen {title} {isCloseable} />
+			<div class="flex gap-x-4 items-center {isTabsShown ? '-mt-2' : ''}">
+				<slot name="actions" />
+			</div>
+		</div>
+	</div>
+	{#if isOpen}
+		<div class="card-body p-0 flex-grow overflow-auto text-base-content" transition:slide>
+			<slot />
+		</div>
+	{/if}
+</div>
+
+
+================================================
+File: src/lib/components/card/tabs.svelte
+================================================
+<script lang="ts">
+	import type { Tab, TabEvents } from '$lib/types';
+	import { createEventDispatcher } from 'svelte';
+	import { fade } from 'svelte/transition';
+	export let isCloseable = true;
+	export let tabs: Tab[] = [];
+	export let title: string;
+	export let isOpen = false;
+
+	$: activeTabID = tabs[0]?.id;
+
+	const dispatch = createEventDispatcher<TabEvents>();
+	const toggleTabs = (tab: Tab) => {
+		activeTabID = tab.id;
+		dispatch('select', tab);
+	};
+</script>
+
+<div class="flex cursor-default">
+	<span class="mr-2 font-semibold" on:click|stopPropagation={() => (isOpen = !isOpen)}>
+		{#if isCloseable}
+			<i class="fas fa-chevron-right icon" class:isOpen />
+		{/if}
+		{title}</span>
+	{#if isOpen && tabs}
+		<ul class="tabs" transition:fade>
+			{#each tabs as tab}
+				<div
+					class="tab tab-lifted text-primary-content {activeTabID === tab.id ? 'tab-active' : ''}"
+					on:click|stopPropagation={() => toggleTabs(tab)}>
+					<i class="mr-1 {tab.icon}" />
+					{tab.title}
+				</div>
+			{/each}
+		</ul>
+	{/if}
+</div>
+
+<style>
+	.icon {
+		transition-duration: 0.5s;
+	}
+	.isOpen {
+		transform: rotate(90deg);
+	}
+</style>
+
+
+================================================
+File: src/lib/components/history/history.svelte
+================================================
+<script lang="ts">
+	import Card from '$lib/components/card/card.svelte';
+	import { codeStore, getStateString } from '$lib/util/state';
+	import {
+		addHistoryEntry,
+		historyModeStore,
+		clearHistoryData,
+		getPreviousState,
+		historyStore,
+		loaderHistoryStore
+	} from './history';
+	import { notify, prompt } from '$lib/util/notify';
+	import { onMount } from 'svelte';
+	import moment from 'moment';
+	import type { HistoryType, State, Tab } from '$lib/types';
+
+	const HISTORY_SAVE_INTERVAL = 60000;
+
+	const tabSelectHandler = (message: CustomEvent<Tab>) => {
+		historyModeStore.set(message.detail.id as HistoryType);
+	};
+	let tabs: Tab[] = [
+		{
+			id: 'manual',
+			title: 'Saved',
+			icon: 'far fa-bookmark'
+		},
+		{
+			id: 'auto',
+			title: 'Timeline',
+			icon: 'fas fa-history'
+		}
+	];
+
+	const saveHistory = (auto = false) => {
+		const currentState: string = getStateString();
+		const previousState: string = getPreviousState(auto);
+		if (previousState !== currentState) {
+			addHistoryEntry({
+				state: $codeStore,
+				time: Date.now(),
+				type: auto ? 'auto' : 'manual'
+			});
+		} else if (!auto) {
+			notify('State already saved.');
+		}
+	};
+
+	const clearHistory = (date?: number): void => {
+		if (!date && !prompt('Clear all saved items?')) {
+			return;
+		}
+		clearHistoryData(date);
+	};
+
+	const restoreHistory = (state: State): void => {
+		codeStore.set({ ...state, updateEditor: true, updateDiagram: true });
+	};
+
+	const relativeTime = (time: number) => {
+		const t = new Date(time);
+		return `${new Date(t).toLocaleString()} (${moment(t).fromNow()})`;
+	};
+
+	onMount(() => {
+		historyModeStore.set('manual');
+		setInterval(() => {
+			saveHistory(true);
+		}, HISTORY_SAVE_INTERVAL);
+	});
+
+	loaderHistoryStore.subscribe((entries) => {
+		if (entries.length > 0 && tabs.length === 2) {
+			tabs = [
+				{
+					id: 'loader',
+					title: 'Revisions',
+					icon: 'fab fa-git-alt'
+				},
+				...tabs
+			];
+			historyModeStore.set('loader');
+		}
+	});
+
+	let isOpen = false;
+</script>
+
+<Card on:select={tabSelectHandler} bind:isOpen {tabs} title="History">
+	<div slot="actions">
+		<button
+			id="saveHistory"
+			class="btn btn-xs btn-success w-12"
+			on:click|stopPropagation={() => saveHistory()}
+			title="Save current state"><i class="far fa-save" /></button>
+		{#if $historyModeStore !== 'loader'}
+			<button
+				id="clearHistory"
+				class="btn btn-xs btn-error w-12"
+				on:click|stopPropagation={() => clearHistory()}
+				title="Delete all saved states"><i class="fas fa-trash-alt" /></button>
+		{/if}
+	</div>
+	<ul class="p-2 space-y-2 overflow-auto h-56" id="historyList">
+		{#if $historyStore.length > 0}
+			{#each $historyStore as { state, time, name, url, type }}
+				<li class="rounded p-2 shadow flex-col">
+					<div class="flex">
+						<div class="flex-1">
+							<div class="flex flex-col text-base-content">
+								{#if url}
+									<a
+										href={url}
+										target="_blank"
+										title="Open revision in new tab"
+										class="hover:underline text-blue-500">{name}</a>
+								{:else}
+									<span>{name}</span>
+								{/if}
+								<span class="text-gray-400 text-sm">{relativeTime(time)}</span>
+							</div>
+						</div>
+						<div class="flex gap-2 content-center">
+							<button class="btn btn-success" on:click={() => restoreHistory(state)}
+								><i class="fas fa-undo mr-1" />Restore</button>
+							{#if type !== 'loader'}
+								<button class="btn btn-error" on:click={() => clearHistory(time)}
+									><i class="fas fa-trash-alt mr-1" />Delete</button>
+							{/if}
+						</div>
+					</div>
+				</li>
+			{/each}
+		{:else}
+			<div class="m-2">
+				No items in History<br />
+				Click the Save button to save current state and restore it later.<br />
+				Timeline will automatically be saved every minute.
+			</div>
+		{/if}
+	</ul>
+</Card>
+
+
+================================================
+File: src/lib/components/history/history.ts
+================================================
+import { derived, writable, get } from 'svelte/store';
+import type { Readable, Writable } from 'svelte/store';
+import { persist, localStorage } from '@macfja/svelte-persistent-store';
+import { generateSlug } from 'random-word-slugs';
+import type { HistoryEntry, HistoryType } from '$lib/types';
+
+const MAX_AUTO_HISTORY_LENGTH = 30;
+
+export const historyModeStore: Writable<HistoryType> = persist(
+	writable('manual'),
+	localStorage(),
+	'autoHistoryMode'
+);
+
+const autoHistoryStore: Writable<HistoryEntry[]> = persist(
+	writable([]),
+	localStorage(),
+	'autoHistoryStore'
+);
+
+const manualHistoryStore: Writable<HistoryEntry[]> = persist(
+	writable([]),
+	localStorage(),
+	'manualHistoryStore'
+);
+
+export const loaderHistoryStore: Writable<HistoryEntry[]> = writable([] as HistoryEntry[]);
+
+export const historyStore: Readable<HistoryEntry[]> = derived(
+	[historyModeStore, autoHistoryStore, manualHistoryStore, loaderHistoryStore],
+	([historyMode, autoHistories, manualHistories, loadedHistories], set) => {
+		if (historyMode === 'auto') {
+			set(autoHistories);
+		} else if (historyMode === 'manual') {
+			set(manualHistories);
+		} else if (historyMode === 'loader') {
+			set(loadedHistories);
+		} else {
+			set(autoHistories);
+		}
+	}
+);
+
+export const addHistoryEntry = (entry: HistoryEntry): void => {
+	if (entry.type === 'loader') {
+		loaderHistoryStore.update((entries) => [entry, ...entries]);
+		return;
+	}
+	entry.name = generateSlug(2);
+	if (entry.type !== 'auto') {
+		manualHistoryStore.update((entries) => [entry, ...entries]);
+		return;
+	}
+	autoHistoryStore.update((entries) => {
+		if (entries.length === MAX_AUTO_HISTORY_LENGTH) {
+			entries.pop();
+		}
+		return [entry, ...entries];
+	});
+};
+
+export const clearHistoryData = (time?: number): void => {
+	(get(historyModeStore) === 'auto' ? autoHistoryStore : manualHistoryStore).update((entries) => {
+		if (get(historyModeStore) !== 'loader') {
+			entries = entries.filter((entry) => time && entry.time != time);
+		}
+		return entries;
+	});
+};
+
+export const getPreviousState = (auto: boolean): string => {
+	const entries = get(auto ? autoHistoryStore : manualHistoryStore);
+	if (entries.length > 0) {
+		return JSON.stringify(entries[0].state);
+	}
+	return '';
+};
+
+
+================================================
+File: src/lib/util/env.ts
+================================================
+export const rendererUrl: string =
+	(import.meta.env.MERMAID_RENDERER_URL as string) ?? 'https://mermaid.ink';
+export const krokiRendererUrl: string =
+	(import.meta.env.MERMAID_KROKI_RENDERER_URL as string) ?? 'https://kroki.io';
+
+
+================================================
+File: src/lib/util/error.ts
+================================================
+import { writable } from 'svelte/store';
+
+export const errorStore = writable(undefined);
+
+
+================================================
+File: src/lib/util/loading.ts
+================================================
+import { writable } from 'svelte/store';
+import type { Writable } from 'svelte/store';
+import type { LoadingState } from '$lib/types';
+
+const defaultLoading: LoadingState = {
+	loading: false
+};
+
+export const loadingStateStore: Writable<LoadingState> = writable(defaultLoading);
+export const initLoading = async <T>(message: string, task: Promise<T>): Promise<T> => {
+	loadingStateStore.set({
+		loading: true,
+		message
+	});
+	const result: T = await task;
+	loadingStateStore.set({
+		loading: false
+	});
+	return result;
+};
+
+
+================================================
+File: src/lib/util/notify.ts
+================================================
+export const notify = (message: string): void => {
+	alert(message);
+};
+
+export const prompt = (message: string): boolean => {
+	return confirm(message);
+};
+
+
+================================================
+File: src/lib/util/serde.ts
+================================================
+import { deflate, inflate } from 'pako';
+import { toUint8Array, fromUint8Array, toBase64, fromBase64 } from 'js-base64';
+import type { State } from '$lib/types';
+
+interface Serde {
+	serialize: (state: string) => string;
+	deserialize: (state: string) => string;
+}
+
+const base64Serde: Serde = {
+	serialize: (state: string): string => {
+		return toBase64(state, true);
+	},
+	deserialize: (state: string): string => {
+		return fromBase64(state);
+	}
+};
+
+export const pakoSerde: Serde = {
+	serialize: (state: string): string => {
+		const data = new TextEncoder().encode(state);
+		const compressed = deflate(data, { level: 9 });
+		return fromUint8Array(compressed, true);
+	},
+	deserialize: (state: string): string => {
+		const data = toUint8Array(state);
+		return inflate(data, { to: 'string' });
+	}
+};
+
+const serdes: { [key: string]: Serde } = {
+	base64: base64Serde,
+	pako: pakoSerde
+};
+
+type SerdeType = keyof typeof serdes;
+
+export const serializeState = (state: State): string => {
+	const json = JSON.stringify(state);
+	const defaultSerde: SerdeType = 'pako';
+	const serialized = serdes[defaultSerde].serialize(json);
+	return `${defaultSerde}:${serialized}`;
+};
+
+export const deserializeState = (state: string): State => {
+	let type: SerdeType, serialized: string;
+	if (state.includes(':')) {
+		let tempType: string;
+		[tempType, serialized] = state.split(':');
+		if (tempType in serdes) {
+			type = tempType;
+		} else {
+			throw new Error(`Unknown serde type: ${tempType}`);
+		}
+	} else {
+		type = 'base64';
+		serialized = state;
+	}
+	const json = serdes[type].deserialize(serialized);
+	return JSON.parse(json) as State;
+};
+
+
+================================================
+File: src/lib/util/state.ts
+================================================
+import { writable, get, derived } from 'svelte/store';
+import type { Readable } from 'svelte/store';
+import { persist, localStorage } from '@macfja/svelte-persistent-store';
+import type { State } from '$lib/types';
+import { saveStatistics } from './stats';
+import { serializeState, deserializeState } from './serde';
+
+export const defaultState: State = {
+	code: `graph TD
+    A[Christmas] -->|Get money| B(Go shopping)
+    B --> C{Let me think}
+    C -->|One| D[Laptop]
+    C -->|Two| E[iPhone]
+    C -->|Three| F[fa:fa-car Car]
+  `,
+	mermaid: JSON.stringify(
+		{
+			theme: 'default'
+		},
+		null,
+		2
+	),
+	updateEditor: false,
+	autoSync: true,
+	updateDiagram: true
+};
+
+const urlParseFailedState = `graph TD
+    A[Loading URL failed. We can try to figure out why.] -->|Decode JSON| B(Please check the console to see the JSON and error details.)
+    B --> C{Is the JSON correct?}
+    C -->|Yes| D(Please Click here to Raise an issue in github.<br/>Including the broken link in the issue <br/> will speed up the fix.)
+    C -->|No| E{Did someone <br/>send you this link?}
+    E -->|Yes| F[Ask them to send <br/>you the complete link]
+    E -->|No| G{Did you copy <br/> the complete URL?}
+    G --> |Yes| D
+    G --> |"No :("| H(Try using the Timeline tab in History <br/>from same browser you used to create the diagram.)
+    click D href "https://github.com/mermaid-js/mermaid-live-editor/issues/new?assignees=&labels=bug&template=bug_report.md&title=Broken%20link" "Raise issue"`;
+
+export const codeStore = persist(writable(defaultState), localStorage(), 'codeStore');
+export const serializedState: Readable<string> = derived([codeStore], ([code], set) => {
+	set(serializeState(code));
+});
+
+export const loadState = (data: string): void => {
+	let state: State;
+	console.log('Loading', data);
+	try {
+		state = deserializeState(data);
+		const mermaidConfig: { [key: string]: string } =
+			typeof state.mermaid === 'string' ? JSON.parse(state.mermaid) : state.mermaid;
+		if (
+			mermaidConfig.securityLevel &&
+			mermaidConfig.securityLevel !== 'strict' &&
+			confirm(
+				`Removing "securityLevel":"${mermaidConfig.securityLevel}" from the config for safety.\nClick Cancel if you trust the source of this Diagram.`
+			)
+		) {
+			delete mermaidConfig.securityLevel; // Prevent setting overriding securityLevel when loading state to mitigate possible XSS attack
+		}
+
+		state.mermaid = JSON.stringify(mermaidConfig, null, 2);
+	} catch (e) {
+		state = get(codeStore);
+		if (data) {
+			console.error('Init error', e);
+			state.code = urlParseFailedState;
+		}
+	}
+	updateCodeStore({ ...state, updateEditor: true });
+};
+
+export const updateCodeStore = (newState: State): void => {
+	codeStore.update((state) => {
+		return { ...state, ...newState };
+	});
+};
+
+let prompted = false;
+export const updateCode = (code: string, updateEditor: boolean, updateDiagram = false): void => {
+	saveStatistics(code);
+	const lines = (code.match(/\n/g) || '').length + 1;
+
+	if (lines > 50 && !prompted && get(codeStore).autoSync) {
+		const turnOff = confirm(
+			'Long diagram detected. Turn off Auto Sync? Click the sync logo to manually sync.'
+		);
+		prompted = true;
+		if (turnOff) {
+			updateCodeStore({
+				autoSync: false
+			} as State);
+		}
+	}
+
+	codeStore.update((state) => {
+		return { ...state, code, updateEditor, updateDiagram };
+	});
+};
+
+export const updateConfig = (config: string, updateEditor: boolean): void => {
+	codeStore.update((state) => {
+		return { ...state, mermaid: config, updateEditor };
+	});
+};
+
+export const toggleDarkTheme = (dark: boolean): void => {
+	codeStore.update((state) => {
+		const config = JSON.parse(state.mermaid);
+		if (!config.theme || ['dark', 'default'].includes(config.theme)) {
+			config.theme = dark ? 'dark' : 'default';
+		}
+
+		return { ...state, mermaid: JSON.stringify(config, null, 2), updateEditor: true };
+	});
+};
+
+export const initURLSubscription = (): void => {
+	serializedState.subscribe((state: string) => {
+		history.replaceState(undefined, undefined, `#${state}`);
+	});
+};
+
+export const getStateString = (): string => {
+	return JSON.stringify(get(codeStore));
+};
+
+
+================================================
+File: src/lib/util/stats.ts
+================================================
+import { browser } from '$app/env';
+import type { AnalyticsInstance } from 'analytics';
+
+export let analytics: AnalyticsInstance;
+
+export const initAnalytics = async (): Promise<void> => {
+	if (browser && !analytics) {
+		try {
+			const { Analytics } = await import('analytics');
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			const googleAnalytics = await import('@analytics/google-analytics');
+			analytics = Analytics({
+				app: 'mermaid-live-editor',
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				plugins: [
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+					googleAnalytics.init({
+						trackingId: 'UA-153180559-1'
+					})
+				]
+			});
+		} catch {
+			console.info('Analytics blocked ;)');
+		}
+	}
+};
+
+const detectType = (text: string): string => {
+	return text
+		.replace(/^\s*%%.*\n/g, '\n')
+		.trimStart()
+		.split(' ')[0];
+};
+
+// manual debounce
+let timeout;
+export const saveStatistics = (graph: string): void => {
+	if (analytics) {
+		clearTimeout(timeout);
+		// Only save statistics after a 5 sec delay
+		timeout = setTimeout(function () {
+			const graphType = detectType(graph);
+			console.debug('ga:', 'send', 'event', 'render', graphType);
+			void analytics.track('render', {
+				graphType
+			});
+		}, 5000);
+	}
+};
+
+
+================================================
+File: src/lib/util/theme.ts
+================================================
+import { writable } from 'svelte/store';
+import type { Writable } from 'svelte/store';
+import { persist, localStorage } from '@macfja/svelte-persistent-store';
+
+export interface ThemeConfig {
+	isDark: boolean;
+	theme?: string;
+}
+
+export const themeStore: Writable<ThemeConfig> = persist(
+	writable({
+		isDark: false
+	}),
+	localStorage(),
+	'themeStore'
+);
+
+const darkThemes = [
+	'dark',
+	'synthwave',
+	'halloween',
+	'aqua',
+	'forest',
+	'luxury',
+	'black',
+	'dracula'
+];
+
+export const setTheme = (theme: string): void => {
+	if (theme.includes(' ')) {
+		theme = theme.split(' ')[1].trim();
+	}
+	const isDark = darkThemes.includes(theme);
+	console.log('Setting theme', theme);
+	themeStore.set({ theme, isDark });
+};
+
+
+================================================
+File: src/lib/util/util.ts
+================================================
+import type { State } from '$lib/types';
+import { initURLSubscription, loadState, updateCodeStore } from './state';
+import { analytics, initAnalytics } from './stats';
+import { loadDataFromUrl } from './fileLoaders/loader';
+import { initLoading } from './loading';
+
+export const loadStateFromURL = (): void => {
+	loadState(window.location.hash.slice(1));
+};
+
+export const syncDiagram = (): void => {
+	updateCodeStore({
+		updateDiagram: true
+	} as State);
+};
+
+export const initHandler = async (): Promise<void> => {
+	loadStateFromURL();
+	await initLoading('Loading Gist...', loadDataFromUrl().catch(console.error));
+	syncDiagram();
+	initURLSubscription();
+	await initAnalytics();
+	analytics?.page();
+};
+
+
+================================================
+File: src/lib/util/fileLoaders/gist.ts
+================================================
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { State } from '$lib/types';
+import { defaultState } from '../state';
+import { addHistoryEntry } from '../../components/history/history';
+
+const codeFileName = 'code.mmd';
+const configFileName = 'config.json';
+
+const isValidGist = (files: any): boolean => {
+	return codeFileName in files;
+};
+
+const getFileContent = async (file: any): Promise<string> => {
+	if (file.truncated) {
+		return await (await fetch(file.raw_url)).text();
+	}
+	return file.content;
+};
+
+interface GistData {
+	code: string;
+	config?: string;
+	author: string;
+	time: number;
+	version: string;
+	url: string;
+}
+
+const getGistData = async (gistURL: string): Promise<GistData> => {
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	const [_, __, gistID, revisionID] = gistURL.split('github.com').pop().split('/');
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+	const { html_url, files, history } = await (
+		await fetch(`https://api.github.com/gists/${gistID}${revisionID ? '/' + revisionID : ''}`)
+	).json();
+	if (isValidGist(files)) {
+		const code = await getFileContent(files[codeFileName]);
+		let config: string;
+		if (configFileName in files) {
+			config = await getFileContent(files[configFileName]);
+		}
+		const currentItem = history[0];
+		return {
+			url: `${html_url}/${currentItem.version}`,
+			code,
+			config,
+			author: currentItem.user.login,
+			time: new Date(currentItem.committed_at).getTime(),
+			version: (currentItem.version as string).slice(-7)
+		};
+	} else {
+		throw 'Invalid gist provided';
+	}
+};
+
+const getStateFromGist = (gist: GistData, gistURL: string = gist.url): State => {
+	const state: State = {
+		...defaultState,
+		code: gist.code,
+		loader: {
+			type: 'gist',
+			config: {
+				url: gistURL
+			}
+		}
+	};
+	gist.config && (state.mermaid = gist.config);
+	return state;
+};
+
+export const loadGistData = async (gistURL: string): Promise<State> => {
+	try {
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const [_, __, gistID, revisionID] = gistURL.split('github.com').pop().split('/');
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		const { history } = await (
+			await fetch(`https://api.github.com/gists/${gistID}${revisionID ? '/' + revisionID : ''}`)
+		).json();
+		const gistHistory: GistData[] = [];
+		for (const entry of history) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			const data: GistData = await getGistData(entry.url).catch(() => undefined);
+			data && gistHistory.push(data);
+		}
+		if (gistHistory.length === 0) {
+			throw 'Invalid gist provided';
+		}
+		gistHistory.reverse();
+		const state = getStateFromGist(gistHistory.slice(-1).pop(), gistURL);
+		for (const gist of gistHistory) {
+			addHistoryEntry({
+				state: getStateFromGist(gist),
+				time: gist.time,
+				type: 'loader',
+				url: gist.url,
+				name: `${gist.author} v${gist.version}`
+			});
+		}
+		return state;
+	} catch (err) {
+		console.error(err);
+	}
+};
+
+
+================================================
+File: src/lib/util/fileLoaders/loader.ts
+================================================
+import { loadGistData } from './gist';
+import { updateCodeStore, defaultState } from '../state';
+import type { Loader, State } from '$lib/types';
+const loaders: Record<string, Loader> = {
+	gist: loadGistData
+};
+
+export const loadDataFromUrl = async (): Promise<void> => {
+	const searchParams = new URLSearchParams(window.location.search);
+	let state: State = defaultState;
+	let code: string, config: string;
+	let loaded = false;
+	const codeURL: string = searchParams.get('code');
+	const configURL: string = searchParams.get('config');
+
+	if (codeURL) {
+		code = await (await fetch(codeURL)).text();
+		loaded = true;
+	}
+	if (configURL) {
+		config = await (await fetch(configURL)).text();
+	} else {
+		config = defaultState.mermaid;
+	}
+	if (!code) {
+		for (const [key, value] of searchParams.entries()) {
+			if (key in loaders) {
+				try {
+					state = await loaders[key](value);
+					loaded = true;
+					break;
+				} catch (err) {
+					console.error(err);
+				}
+			}
+		}
+	} else {
+		state = {
+			code,
+			mermaid: config,
+			loader: {
+				type: 'files',
+				config: {
+					codeURL,
+					configURL
+				}
+			}
+		} as State;
+	}
+	loaded &&
+		updateCodeStore({
+			...state,
+			autoSync: true,
+			updateDiagram: true,
+			updateEditor: true
+		});
+	// window.location.search = '';
+};
+
+
+================================================
+File: src/routes/__layout.svelte
+================================================
+<script lang="ts">
+	import '../app.postcss';
+	import { base } from '$app/paths';
+	import { onMount } from 'svelte';
+	import { loadingStateStore } from '$lib/util/loading';
+	import { setTheme, themeStore } from '$lib/util/theme';
+	import { toggleDarkTheme } from '$lib/util/state';
+
+	// This can be removed once https://github.com/sveltejs/kit/issues/1612 is fixed.
+	// Then move it into src and vite will bundle it automatically.
+	onMount(() => {
+		if ('serviceWorker' in navigator) {
+			navigator.serviceWorker
+				.register(`${base}/service-worker.js`, {
+					scope: `${base}/`
+				})
+				.then(function (registration) {
+					console.log('Registration successful, scope is:', registration.scope);
+				})
+				.catch(function (error) {
+					console.log('Service worker registration failed, error:', error);
+				});
+		}
+
+		const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+		if ($themeStore.theme === undefined) {
+			setTheme(isDarkMode ? 'dark' : 'light');
+		}
+
+		themeStore.subscribe(({ theme, isDark }) => {
+			if (theme) {
+				document.getElementsByTagName('html')[0].setAttribute('data-theme', theme);
+				toggleDarkTheme(isDark);
+			}
+		});
+	});
+</script>
+
+<main class="h-screen text-primary-content">
+	<slot />
+</main>
+
+{#if $loadingStateStore.loading}
+	<div
+		class="w-screen h-screen z-50 absolute left-0 top-0 bg-gray-600 opacity-50 flex align-middle justify-center">
+		<div class="text-indigo-100 text-4xl font-bold my-auto">
+			<div class="loader mx-auto" />
+			<div>{$loadingStateStore.message}</div>
+		</div>
+	</div>
+{/if}
+
+<style>
+	.loader {
+		border: 0.45em solid #f3f3f3;
+		border-radius: 50%;
+		border-top: 0.45em solid #6365f1;
+		width: 3em;
+		height: 3em;
+		-webkit-animation: spin 2s linear infinite; /* Safari */
+		animation: spin 2s linear infinite;
+	}
+
+	/* Safari */
+	@-webkit-keyframes spin {
+		0% {
+			-webkit-transform: rotate(0deg);
+		}
+		100% {
+			-webkit-transform: rotate(360deg);
+		}
+	}
+
+	@keyframes spin {
+		0% {
+			transform: rotate(0deg);
+		}
+		100% {
+			transform: rotate(360deg);
+		}
+	}
+</style>
+
+
+================================================
+File: src/routes/edit.svelte
+================================================
+<script lang="ts">
+	import Editor from '$lib/components/editor.svelte';
+	import Navbar from '$lib/components/navbar.svelte';
+	import Preset from '$lib/components/preset.svelte';
+	import Actions from '$lib/components/actions.svelte';
+	import View from '$lib/components/view.svelte';
+	import Card from '$lib/components/card/card.svelte';
+	import History from '$lib/components/history/history.svelte';
+	import { updateCode, updateConfig, codeStore, serializedState } from '$lib/util/state';
+	import { initHandler, syncDiagram } from '$lib/util/util';
+	import { errorStore } from '$lib/util/error';
+	import { onMount } from 'svelte';
+	import mermaid from 'mermaid';
+	import type monaco from 'monaco-editor';
+	import type { EditorUpdateEvent, State, Tab } from '$lib/types';
+	import { base } from '$app/paths';
+
+	serializedState; // Weird fix for error > serializedState is not defined. Treeshaking?
+	let selectedMode = 'code';
+	const languageMap = {
+		code: 'mermaid',
+		config: 'json'
+	};
+	let text = '';
+	let language: 'mermaid' | 'json' = 'mermaid';
+	let errorMarkers: monaco.editor.IMarkerData[] = [];
+	$: language = languageMap[selectedMode];
+	$: {
+		if (selectedMode === 'code') {
+			text = $codeStore.code;
+		} else {
+			text = $codeStore.mermaid;
+		}
+	}
+
+	codeStore.subscribe((state: State) => {
+		if (state.updateEditor) {
+			text = selectedMode === 'code' ? state.code : state.mermaid;
+		}
+	});
+	const tabSelectHandler = (message: CustomEvent<Tab>) => {
+		$codeStore.updateEditor = true;
+		selectedMode = message.detail.id;
+	};
+	const tabs: Tab[] = [
+		{
+			id: 'code',
+			title: 'Code',
+			icon: 'fas fa-code'
+		},
+		{
+			id: 'config',
+			title: 'Config',
+			icon: 'fas fa-cogs'
+		}
+	];
+
+	const handleCodeUpdate = (code: string): void => {
+		mermaid.parse(code);
+		updateCode(code, false);
+	};
+
+	const handleConfigUpdate = (config: string): void => {
+		JSON.parse(config);
+		updateConfig(config, false);
+	};
+
+	const updateHandler = (message: CustomEvent<EditorUpdateEvent>) => {
+		try {
+			if (selectedMode === 'code') {
+				handleCodeUpdate(message.detail.text);
+			} else {
+				handleConfigUpdate(message.detail.text);
+			}
+			errorStore.set(undefined);
+			errorMarkers = [];
+		} catch (e) {
+			errorStore.set(e);
+			if (e.hash) {
+				const marker: monaco.editor.IMarkerData = {
+					severity: 8, //Error
+					startLineNumber: e.hash.loc.first_line,
+					startColumn: e.hash.loc.first_column,
+					endLineNumber: e.hash.loc.last_line,
+					endColumn: (e.hash.loc.last_column as number) + 1,
+					message: e.str
+				};
+				errorMarkers.push(marker);
+				// Clear all previous errors before this error.
+				errorMarkers = errorMarkers.filter(
+					(m) => m.startLineNumber >= marker.startLineNumber && m.startColumn >= marker.startColumn
+				);
+			}
+			console.error(e);
+		}
+	};
+
+	const viewDiagram = () => {
+		window.open(`${base}/view#${$serializedState}`, '_blank').focus();
+	};
+
+	onMount(async () => {
+		await initHandler();
+		const resizer = document.getElementById('resizeHandler');
+		const element = document.getElementById('editorPane');
+		const resize = (e) => {
+			const newWidth = e.pageX - element.getBoundingClientRect().left;
+			if (newWidth > 50) {
+				element.style.width = `${newWidth}px`;
+			}
+		};
+
+		const stopResize = () => {
+			window.removeEventListener('mousemove', resize);
+		};
+		resizer.addEventListener('mousedown', (e) => {
+			e.preventDefault();
+			window.addEventListener('mousemove', resize);
+			window.addEventListener('mouseup', stopResize);
+		});
+	});
+</script>
+
+<div class="h-full flex flex-col overflow-hidden">
+	<Navbar />
+	<div class="flex-1 flex overflow-hidden">
+		<div class="hidden md:flex flex-col" id="editorPane" style="width: 40%">
+			<Card on:select={tabSelectHandler} {tabs} isCloseable={false} title="Mermaid">
+				<div slot="actions">
+					<div class="flex flex-row items-center">
+						{#if !$codeStore.autoSync}
+							<button
+								class="btn btn-secondary btn-xs"
+								title="Sync Diagram"
+								data-cy="sync"
+								on:click={syncDiagram}><i class="fas fa-sync" /></button>
+						{/if}
+
+						<div class="form-control">
+							<label class="cursor-pointer label" for="autoSync">
+								<input
+									type="checkbox"
+									class="toggle toggle-primary mr-1"
+									id="autoSync"
+									bind:checked={$codeStore.autoSync} />
+								<span> Auto sync</span>
+							</label>
+						</div>
+					</div>
+				</div>
+
+				<Editor on:update={updateHandler} {language} bind:text {errorMarkers} />
+			</Card>
+
+			<div class="-mt-2">
+				<Preset />
+				<History />
+				<Actions />
+			</div>
+		</div>
+		<div id="resizeHandler" class="hidden md:block" />
+		<div class="flex-1 flex flex-col overflow-hidden">
+			<Card title="Diagram" isCloseable={false}>
+				<button
+					slot="actions"
+					class="btn btn-primary btn-xs shadow-lg"
+					title="View diagram in new page"
+					on:click|stopPropagation={() => viewDiagram()}><i class="far fa-eye mr-2" /> View</button>
+
+				<div class="flex-1 overflow-auto">
+					<View />
+				</div>
+			</Card>
+			<div class="md:hidden rounded shadow p-2 mx-2">
+				Code editing not supported on mobile. Please use a desktop browser.
+			</div>
+		</div>
+	</div>
+</div>
+
+<style>
+	#resizeHandler {
+		cursor: col-resize;
+		padding: 0 2px;
+	}
+
+	#resizeHandler::after {
+		width: 2px;
+		height: 100%;
+		top: 0;
+		content: '';
+		position: absolute;
+		background-color: hsla(var(--b3));
+		margin-left: -1px;
+		transition-duration: 0.2s;
+	}
+
+	#resizeHandler:hover::after {
+		margin-left: -2px;
+		background-color: hsla(var(--p));
+		width: 4px;
+	}
+</style>
+
+
+================================================
+File: src/routes/index.svelte
+================================================
+<script lang="ts">
+	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
+	import { base } from '$app/paths';
+
+	onMount(async () => {
+		// Handle old live editor links and redirect to new version
+		const hash = window.location.hash.split('/');
+		let newURL = 'edit';
+		if (hash.length > 2) {
+			newURL = `${hash[1]}#${hash[2]}`;
+		}
+		await goto(`${base}/${newURL}`, {
+			replaceState: true
+		});
+	});
+</script>
+
+
+================================================
+File: src/routes/manifest.json.ts
+================================================
+import { base } from '$app/paths';
+export const get = (): { body: unknown } => {
+	return {
+		body: {
+			short_name: 'Mermaid',
+			name: 'Mermaid Live Editor',
+			icons: [
+				{
+					src: `${base}/icon-192.png`,
+					type: 'image/png',
+					sizes: '192x192'
+				},
+				{
+					src: `${base}/icon-512.png`,
+					type: 'image/png',
+					sizes: '512x512'
+				}
+			],
+			start_url: `${base}/edit/`,
+			background_color: '#6366F1',
+			display: 'standalone',
+			scope: `${base}/edit/`,
+			theme_color: '#6366F1',
+			description: 'FlowChart & Diagrams Editor.',
+			orientation: 'landscape'
+		}
+	};
+};
+
+
+================================================
+File: src/routes/view.svelte
+================================================
+<script lang="ts">
+	import View from '$lib/components/view.svelte';
+	import { initHandler } from '$lib/util/util';
+	import { onMount } from 'svelte';
+	onMount(initHandler);
+</script>
+
+<View />
+
+
+================================================
+File: src/routes/[fallback]/manifest.json.ts
+================================================
+import { get as manifestGet } from '../manifest.json';
+export const get = manifestGet;
+
+
