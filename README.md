@@ -5,7 +5,7 @@ This script is designed to be used with [Axure RP](https://axure.com) (a phenome
 This script copies the contents of the **$axure.document.sitemap.rootNodes** object to the clipboard formatted as a mermaid flowchart with each level of the hierarchy grouped together in a subgraph block.
 
 ## How to use 
-### Use pre-generated bookmarklet scriot
+### Use pre-generated bookmarklet script
 I have a pre-generated [bookmarklet](./axure-to-mermaid.bookmarklet.js), just click the bookmarklet to copy your sitemap to the clipboard and paste it into your favorite mermaid editor such as [Mermaid Live Editor](https://mermaid.live/)
 
 ### Use the unconverted source
