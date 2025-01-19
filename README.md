@@ -6,7 +6,7 @@ This script copies the contents of the **$axure.document.sitemap.rootNodes** obj
 
 ## How to use 
 ### Use pre-generated bookmarklet script
-I have a pre-generated [bookmarklet](./axure-to-mermaid.bookmarklet.js), just click the bookmarklet to copy your sitemap to the clipboard and paste it into your favorite mermaid editor such as [Mermaid Live Editor](https://mermaid.live/)
+I have a pre-generated minified [bookmarklet](./axure-to-mermaid.bookmarklet.js), just click the bookmarklet to copy your sitemap to the clipboard and paste it into your favorite mermaid editor such as [Mermaid Live Editor](https://mermaid.live/).
 
 ### Use the unconverted source
 #### Paste in console
