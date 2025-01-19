@@ -6,6 +6,33 @@
 
 if (typeof $axure !== "undefined") {
   /**
+   * Helper function to create and style elements
+   * @param {string} elementType - The type of element to create (e.g., 'div', 'button')
+   * @param {string} textContent - The text content of the element
+   * @param {Object} props - An object containing properties and styles for the element
+   * @returns {HTMLElement} The created element
+   */
+  function createElement(elementType, textContent = '', props = {}) {
+    const element = document.createElement(elementType);
+    element.textContent = textContent;
+
+    // Apply properties and styles
+    for (const [key, value] of Object.entries(props)) {
+      if (key === 'style' && typeof value === 'object') {
+        // Apply styles individually
+        for (const [styleKey, styleValue] of Object.entries(value)) {
+          element.style[styleKey] = styleValue;
+        }
+      } else {
+        // Apply other attributes
+        element[key] = value;
+      }
+    }
+
+    return element;
+  }
+
+  /**
    * @typedef {Object} Project
    * @property {string} name - Project name from Axure configuration
    * @property {string} id - Project ID from Axure configuration
@@ -13,14 +40,14 @@ if (typeof $axure !== "undefined") {
   const project = {
     "name": $axure.document.configuration.projectName,
     "id": $axure.document.configuration.projectId
-  }
+  };
 
   /**
    * @constant {Array} sitemapArray
    * Root nodes of the Axure sitemap structure
    */
   const sitemapArray = $axure.document.sitemap.rootNodes;
-    
+
   /**
    * Processes sitemap nodes into a flat array with level information
    * @param {Array} nodes - Array of sitemap nodes
@@ -39,7 +66,7 @@ if (typeof $axure !== "undefined") {
         parentId: parentId,
         type: node.type
       });
-            
+
       if (node.children) {
         processSitemap(node.children, level + 1, nodeId, result);
       }
@@ -54,13 +81,13 @@ if (typeof $axure !== "undefined") {
    */
   function generateMermaidMarkup(nodes) {
     let mermaidText = `---\nconfig:\n  title: ${project.name} Sitemap\n---\n\ngraph TD\n  classDef containers fill:transparent,stroke-width:0\n\n`;
-        
+
     const maxLevel = Math.max(...nodes.map(n => n.level));
-        
+
     for (let level = 1; level <= maxLevel; level++) {
       const tierNodes = nodes.filter(n => n.level === level);
       mermaidText += `  subgraph tier${level}[" "]\n`;
-            
+
       tierNodes.forEach(node => {
         if (level === 1) {
           mermaidText += `    ${node.id}["${node.name}"]\n`;
@@ -68,12 +95,12 @@ if (typeof $axure !== "undefined") {
           mermaidText += `    ${node.parentId} --- ${node.id}["${node.name}"]\n`;
         }
       });
-            
+
       mermaidText += `  end\n\n`;
     }
-        
-    mermaidText += `  class ${Array.from({length: maxLevel}, (_, i) => `tier${i + 1}`).join(',')} containers`;
-        
+
+    mermaidText += `  class ${Array.from({ length: maxLevel }, (_, i) => `tier${i + 1}`).join(',')} containers`;
+
     return mermaidText;
   }
 
@@ -136,50 +163,72 @@ if (typeof $axure !== "undefined") {
     img.src = `data:image/svg+xml;base64,${btoa(svg)}`;
   }
 
+  /**
+   * Removes the toolbar and all script resources
+   */
+  function unloadScript() {
+    if (toolbar && toolbar.parentNode) {
+      toolbar.parentNode.removeChild(toolbar);
+    }
+    console.log("Script and resources have been unloaded.");
+  }
+
   // Create floating toolbar
-  const toolbar = document.createElement('div');
-  toolbar.style.position = 'fixed';
-  toolbar.style.top = '10px';
-  toolbar.style.right = '10px';
-  toolbar.style.backgroundColor = 'white';
-  toolbar.style.padding = '10px';
-  toolbar.style.border = '1px solid #ccc';
-  toolbar.style.zIndex = '1000';
-  toolbar.style.display = 'flex';
-  toolbar.style.flexDirection = 'column';
-  toolbar.style.gap = '5px';
+  const toolbar = createElement('div', '', {
+    style: {
+      position: 'fixed',
+      top: '10px',
+      right: '10px',
+      backgroundColor: 'white',
+      padding: '10px',
+      border: '1px solid #ccc',
+      zIndex: '1000',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '5px'
+    }
+  });
 
-  const allButton = document.createElement('button');
-  allButton.textContent = 'All';
-  allButton.onclick = () => {
-    const processedNodes = processSitemap(sitemapArray);
-    const mermaidText = generateMermaidMarkup(processedNodes);
-    copyToClipboard(mermaidText);
-  };
+  // Add "X" button to the toolbar
+  const closeButton = createElement('button', 'X', {
+    style: {
+      position: 'absolute',
+      top: '0',
+      right: '0',
+      background: 'transparent',
+      border: 'none',
+      cursor: 'pointer',
+      fontWeight: 'bold',
+      color: '#999'
+    },
+    onclick: unloadScript
+  });
 
-  const startHereButton = document.createElement('button');
-  startHereButton.textContent = 'Start Here';
-  startHereButton.onclick = () => {
-    const selectedNode = $axure.document.getSelectedItem();
-    if (selectedNode) {
-      const processedNodes = processSitemap([selectedNode]);
+  // Add buttons to the toolbar
+  const allButton = createElement('button', 'All', {
+    onclick: () => {
+      const processedNodes = processSitemap(sitemapArray);
       const mermaidText = generateMermaidMarkup(processedNodes);
       copyToClipboard(mermaidText);
     }
-  };
+  });
 
-  const txtButton = document.createElement('button');
-  txtButton.textContent = 'Txt';
-  txtButton.disabled = true;
+  const startHereButton = createElement('button', 'Start Here', {
+    onclick: () => {
+      const selectedNode = $axure.document.getSelectedItem();
+      if (selectedNode) {
+        const processedNodes = processSitemap([selectedNode]);
+        const mermaidText = generateMermaidMarkup(processedNodes);
+        copyToClipboard(mermaidText);
+      }
+    }
+  });
 
-  const svgButton = document.createElement('button');
-  svgButton.textContent = 'SVG';
-  svgButton.disabled = true;
+  const txtButton = createElement('button', 'Txt', { disabled: true });
+  const svgButton = createElement('button', 'SVG', { disabled: true });
+  const pngButton = createElement('button', 'PNG', { disabled: true });
 
-  const pngButton = document.createElement('button');
-  pngButton.textContent = 'PNG';
-  pngButton.disabled = true;
-
+  toolbar.appendChild(closeButton);
   toolbar.appendChild(allButton);
   toolbar.appendChild(startHereButton);
   toolbar.appendChild(txtButton);
