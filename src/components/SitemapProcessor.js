@@ -1,8 +1,8 @@
 import { CONFIG } from '../config/constants.js';
 
 export class SitemapProcessor {
-  constructor(projectName) {
-    this.projectName = projectName;
+  constructor() {
+    //
   }
 
   processSitemap(nodes, level = 1, parentId = null, result = []) {

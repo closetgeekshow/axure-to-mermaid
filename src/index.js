@@ -16,12 +16,9 @@ export class AxureToMermaid {
       id: $axure.document.configuration.projectId
     };
     
-    // Fix: Pass project name directly to SitemapProcessor
-    this.processor = new SitemapProcessor(project.name);
-    
     // Fix: Pass processor and sitemap array correctly to Toolbar
     this.toolbar = new Toolbar(
-      this.processor,
+      new SitemapProcessor(),
       $axure.document.sitemap.rootNodes
     );
   }

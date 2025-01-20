@@ -1,4 +1,4 @@
-import { serializeMermaid } from './utils/mermaid.js';
+import { serializeMermaid } from './mermaid.js';
 
 export async function handleSvgExport(mermaidText, download = false) {
     const encoded = serializeMermaid(mermaidText);
