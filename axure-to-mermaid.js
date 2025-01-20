@@ -142,33 +142,6 @@ if (typeof $axure !== "undefined") {
   }
 
   /**
-   * Converts SVG to PNG using canvas
-   * @param {string} svg - The SVG content
-   * @param {string} filename - The name of the PNG file
-   */
-  function convertSvgToPng(svg, filename) {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0);
-      canvas.toBlob((blob) => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }, 'image/png');
-    };
-    img.src = `data:image/svg+xml;base64,${btoa(svg)}`;
-  }
-
-  /**
    * Removes the toolbar and all script resources
    */
   function unloadScript() {
@@ -182,8 +155,8 @@ if (typeof $axure !== "undefined") {
   const toolbar = createElement('div', '', {
     style: {
       position: 'fixed',
-      top: '10px',
-      right: '10px',
+      bottom: '2vh',
+      right: '2vw',
       backgroundColor: 'white',
       padding: '10px',
       border: '1px solid #ccc',
@@ -200,89 +173,139 @@ if (typeof $axure !== "undefined") {
   });
 
   // Add buttons to the toolbar
+  let currentMermaidText = '';
+
   const allButton = createElement('button', 'All', {
-    onclick: () => {
-      const processedNodes = processSitemap(sitemapArray);
-      const mermaidText = generateMermaidMarkup(processedNodes);
-      copyToClipboard(mermaidText);
-    }
+      onclick: () => {
+          // Process sitemap when All button is clicked
+        const processedNodes = processSitemap(sitemapArray);
+        currentMermaidText = generateMermaidMarkup(processedNodes);
+        copyToClipboard(currentMermaidText);
+        enableExportButtons();
+      }
   });
 
   const startHereButton = createElement('button', 'Start Here', {
-    onclick: () => {
-      const currentId = $axure.page.shortId;
-      const findCurrentNode = (nodes, currentId) => {
-        for (const node of nodes) {
-          console.log('Checking node:', node.id, node.pageName);
-          if (node.id === currentId) {
-            return node;
-          }
-          if (node.children) {
-            const found = findCurrentNode(node.children);
-            if (found) return found;
-          }
-        }
-        return null;
-      };
-  
-      const selectedNode = findCurrentNode(sitemapArray, currentId);
-      console.log('Found node:', selectedNode);
-      
-      if (selectedNode) {
-        const processedNodes = processSitemap([selectedNode]);
-        const mermaidText = generateMermaidMarkup(processedNodes);
-        copyToClipboard(mermaidText);
-      }
-    }
-  });
-  
+      onclick: () => {
+          const currentId = $axure.page.shortId;
+          const findCurrentNode = (nodes, currentId) => {
+              for (const node of nodes) {
+                  if (node.id === currentId) {
+                      return node;
+                  }
+                  if (node.children) {
+                      const found = findCurrentNode(node.children, currentId);
+                      if (found) return found;
+                  }
+              }
+              return null;
+          };
 
+          const selectedNode = findCurrentNode(sitemapArray, currentId);
+          if (selectedNode) {
+              // Process sitemap when Start Here button is clicked
+              const processedNodes = processSitemap([selectedNode]);
+              currentMermaidText = generateMermaidMarkup(processedNodes);
+              copyToClipboard(currentMermaidText);
+              enableExportButtons();
+          }
+      }
+  });
+
+  function enableExportButtons() {
+      txtButton.disabled = false;
+      svgUrlButton.disabled = false;
+      svgDownloadButton.disabled = false;
+      pngUrlButton.disabled = false;
+      pngDownloadButton.disabled = false;
+  }
 
   const txtButton = createElement('button', '📄Txt', { disabled: true });
-  const svgUrlButton = createElement('button', '🕸SVG', { disabled: true });
-  const pngUrlButton = createElement('button', '🕸PNG', { disabled: true });
+  const svgUrlButton = createElement('button', '🔗SVG', { disabled: true });
+  const svgDownloadButton = createElement('button', '📥SVG', { disabled: true });
+  const pngUrlButton = createElement('button', '🔗PNG', { disabled: true });
+  const pngDownloadButton = createElement('button', '📥PNG', { disabled: true });
 
   toolbar.appendChild(allButton);
   toolbar.appendChild(startHereButton);
   toolbar.appendChild(txtButton);
   toolbar.appendChild(svgUrlButton);
+  toolbar.appendChild(svgDownloadButton);
   toolbar.appendChild(pngUrlButton);
+  toolbar.appendChild(pngDownloadButton);
   toolbar.appendChild(closeButton);
-  
+
   document.body.appendChild(toolbar);
 
-  // Main execution
-  const processedNodes = processSitemap(sitemapArray);
-  const mermaidText = generateMermaidMarkup(processedNodes);
+  // Keep all export buttons disabled initially
+  txtButton.disabled = true;
+  svgUrlButton.disabled = true;
+  svgDownloadButton.disabled = true;
+  pngUrlButton.disabled = true;
+  pngDownloadButton.disabled = true;
+    // Update txt button to use the current mermaid text
+    txtButton.onclick = () => {
+        downloadFile(currentMermaidText, 'sitemap.txt', 'text/plain');
+    };
 
-  // Enable buttons after processing
-  txtButton.disabled = false;
-  svgUrlButton.disabled = false;
-  pngUrlButton.disabled = false;
+    // Add these utility functions
+    function serializeMermaid(mermaidText) {
+      // Create state object matching mermaid-live-editor structure
+      const state = {
+        code: mermaidText,
+        mermaid: JSON.stringify({
+          theme: 'default'
+        }, null, 2),
+        updateEditor: true,
+        autoSync: true,
+        updateDiagram: true
+      };
 
-  txtButton.onclick = () => {
-    downloadFile(mermaidText, 'sitemap.txt', 'text/plain');
-  };
+      // Convert state object to string
+      const json = JSON.stringify(state);
+  
+      // Convert string to Uint8Array
+      const data = new TextEncoder().encode(json);
+  
+      // Compress with pako
+      const compressed = deflate(data, { level: 9 });
+  
+      // Convert to base64 URL-safe string
+      return fromUint8Array(compressed, true);
+    }
+    // Modify the button handlers
+    svgUrlButton.onclick = () => {
+      const encoded = serializeMermaid(mermaidText);
+      const svgUrl = `https://mermaid.ink/svg/pako:${encoded}`;
+      window.open(svgUrl, '_blank');
+    };
 
-  // Add these utility functions
-  function serializeMermaid(mermaidText) {
-    // Convert string to Uint8Array
-    const data = new TextEncoder().encode(mermaidText);
-    // Compress with pako at max level
-    const compressed = deflate(data, { level: 9 });
-    // Convert to base64 URL-safe string
-    return fromUint8Array(compressed, true);
+    svgDownloadButton.onclick = async () => {
+      const encoded = serializeMermaid(mermaidText);
+      const svgUrl = `https://mermaid.ink/svg/pako:${encoded}`;
+      const response = await fetch(svgUrl);
+      const svgContent = await response.text();
+      downloadFile(svgContent, 'sitemap.svg', 'image/svg+xml');
+    };
+
+    pngUrlButton.onclick = () => {
+      const encoded = serializeMermaid(mermaidText);
+      const pngUrl = `https://mermaid.ink/img/pako:${encoded}?type=png`;
+      window.open(pngUrl, '_blank');
+    };
+
+    pngDownloadButton.onclick = async () => {
+      const encoded = serializeMermaid(mermaidText);
+      const pngUrl = `https://mermaid.ink/img/pako:${encoded}?type=png`;
+      const response = await fetch(pngUrl);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'sitemap.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    };
   }
-
-  // Modify the button handlers
-  svgUrlButton.onclick = () => {
-    const encoded = serializeMermaid(mermaidText);
-    const svgUrl = `https://mermaid.ink/svg/pako:${encoded}`;
-    downloadFile(svgUrl, 'mermaid.svg', 'image/svg+xml');
-  };
-
-  pngUrlButton.onclick = () => {
-    const encoded = serializeMermaid(mermaidText);
-    const pngUrl = `https://mermaid.ink/img/pako:${encoded}?type=png`;
-    downloadFile(pngUrl, 'mermaid.png', 'image/png');
-  };}
