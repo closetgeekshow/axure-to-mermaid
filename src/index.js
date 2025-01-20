@@ -1,6 +1,5 @@
 import { Toolbar } from './components/Toolbar.js';
 import { SitemapProcessor } from './components/SitemapProcessor.js';
-import { loadDependencies } from './utils/dependencies.js';
 
 /**
  * @class AxureToMermaid
