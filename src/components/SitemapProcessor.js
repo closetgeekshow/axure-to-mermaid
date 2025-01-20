@@ -41,7 +41,7 @@ export class SitemapProcessor {
    * @returns {string} Mermaid markup text
    */
   generateMermaidMarkup(nodes) {
-    let mermaidText = `---\nconfig:\n  title: ${this.projectName} Sitemap\n  theme: default\n---\n\ngraph TD\n  classDef containers fill:transparent,stroke-width:0\n\n`;
+    let mermaidText = `---\nconfig:\n  title: ${$axure.document.configuration.projectName} Sitemap\n  theme: default\n---\n\ngraph TD\n  classDef containers fill:transparent,stroke-width:0\n\n`;
 
     const maxLevel = Math.max(...nodes.map((n) => n.level));
 

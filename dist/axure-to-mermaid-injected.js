@@ -316,7 +316,7 @@ javascript:(() => {
     generateMermaidMarkup(nodes) {
       let mermaidText = `---
 config:
-  title: ${this.projectName} Sitemap
+  title: ${$axure.document.configuration.projectName} Sitemap
   theme: default
 ---
 
@@ -389,7 +389,7 @@ graph TD
   // src/inject.js
   async function initialize() {
     await loadDependencies();
-    new AxureToMermaid();
+    window.AxureToMermaid = new AxureToMermaid();
   }
   initialize().catch(console.error);
 })();

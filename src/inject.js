@@ -8,7 +8,7 @@ import { AxureToMermaid } from './index';
  */
 async function initialize() {
     await loadDependencies();
-    new AxureToMermaid();
+    window.AxureToMermaid = new AxureToMermaid();
 }
 
 initialize().catch(console.error);
