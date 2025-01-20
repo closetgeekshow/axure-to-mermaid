@@ -1,5 +1,19 @@
+/**
+ * @file Export handlers for different file formats
+ * @module ExportHandlers
+ * @requires serializeMermaid
+ */
+
 import { serializeMermaid } from './mermaid.js';
 
+/**
+ * Handles exporting Mermaid text as an SVG file
+ * @async
+ * @function handleSvgExport
+ * @param {string} mermaidText - The Mermaid diagram text
+ * @param {boolean} [download=false] - Whether to download the file or open in a new tab
+ * @returns {Promise<void>}
+ */
 export async function handleSvgExport(mermaidText, download = false) {
     const encoded = serializeMermaid(mermaidText);
     const url = `https://mermaid.ink/svg/pako:${encoded}`;
@@ -13,6 +27,14 @@ export async function handleSvgExport(mermaidText, download = false) {
     }
 }
 
+/**
+ * Handles exporting Mermaid text as a PNG file
+ * @async
+ * @function handlePngExport
+ * @param {string} mermaidText - The Mermaid diagram text
+ * @param {boolean} [download=false] - Whether to download the file or open in a new tab
+ * @returns {Promise<void>}
+ */
 export async function handlePngExport(mermaidText, download = false) {
     const encoded = serializeMermaid(mermaidText);
     const url = `https://mermaid.ink/img/pako:${encoded}?type=png`;
@@ -26,6 +48,13 @@ export async function handlePngExport(mermaidText, download = false) {
     }
 }
 
+/**
+ * Downloads a file with the specified content and type
+ * @function downloadFile
+ * @param {Blob|string} content - The content to download
+ * @param {string} filename - The name of the file to save
+ * @param {string} type - The MIME type of the file
+ */
 export function downloadFile(content, filename, type) {
     const blob = new Blob([content], { type });
     const url = URL.createObjectURL(blob);
@@ -38,8 +67,11 @@ export function downloadFile(content, filename, type) {
     URL.revokeObjectURL(url);
 }
 
+/**
+ * Handles exporting Mermaid text as a TXT file
+ * @function handleTxtExport
+ * @param {string} mermaidText - The Mermaid diagram text
+ */
 export function handleTxtExport(mermaidText) {
     downloadFile(mermaidText, 'sitemap.txt', 'text/plain');
 }
-
-

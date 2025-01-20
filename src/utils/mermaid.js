@@ -1,3 +1,16 @@
+/**
+ * @file Utility functions for handling Mermaid diagram serialization
+ * @module MermaidUtils
+ * @requires pako
+ * @requires js-base64
+ */
+
+/**
+ * Serializes Mermaid text into a compressed format suitable for URL encoding
+ * @function serializeMermaid
+ * @param {string} mermaidText - The Mermaid diagram text
+ * @returns {string} The serialized and compressed Mermaid text
+ */
 export function serializeMermaid(mermaidText) {
   const state = {
     code: mermaidText,

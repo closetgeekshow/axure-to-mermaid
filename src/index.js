@@ -2,12 +2,20 @@ import { Toolbar } from './components/Toolbar.js';
 import { SitemapProcessor } from './components/SitemapProcessor.js';
 import { loadDependencies } from './utils/dependencies.js';
 
-
+/**
+ * @class AxureToMermaid
+ * @description Initializes the Axure to Mermaid conversion process
+ */
 export class AxureToMermaid {
   constructor() {
     this.init();
   }
 
+  /**
+   * Initializes the application by loading dependencies and setting up the toolbar
+   * @private
+   * @async
+   */
   async init() {
     await loadDependencies();
     

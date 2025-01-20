@@ -1,3 +1,16 @@
+/**
+ * @file DOM utility functions for element creation and clipboard operations
+ * @module DOMUtils
+ */
+
+/**
+ * Creates a new DOM element with specified properties
+ * @function createElement
+ * @param {string} elementType - The type of element to create
+ * @param {string} [textContent=''] - The text content of the element
+ * @param {Object} [props={}] - Additional properties to set on the element
+ * @returns {HTMLElement} The created DOM element
+ */
 export function createElement(elementType, textContent = '', props = {}) {
   const element = document.createElement(elementType);
   element.textContent = textContent;
@@ -14,6 +27,11 @@ export function createElement(elementType, textContent = '', props = {}) {
   return element;
 }
 
+/**
+ * Copies the specified text to the clipboard
+ * @function copyToClipboard
+ * @param {string} copyText - The text to copy to the clipboard
+ */
 export function copyToClipboard(copyText) {
   const textarea = document.createElement("textarea");
   textarea.value = copyText;
@@ -22,5 +40,3 @@ export function copyToClipboard(copyText) {
   document.execCommand("copy");
   document.body.removeChild(textarea);
 }
-
-

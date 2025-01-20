@@ -1,17 +1,22 @@
-import { CONFIG } from '../config/constants.js';
-import { createElement, copyToClipboard } from '../utils/dom.js';
-import { handleTxtExport, handleSvgExport, handlePngExport } from '../utils/exportHandlers.js';
-
 /**
  * @file Toolbar component for managing sitemap visualization controls
  * @module Toolbar
- * @requires CONFIG
+ * @requires BUTTONS
+ * @requires LAYOUT
  * @requires createElement
  * @requires copyToClipboard
  * @requires handleTxtExport
  * @requires handleSvgExport
  * @requires handlePngExport
  */
+
+import { BUTTONS, LAYOUT } from "../config/constants.js";
+import { createElement, copyToClipboard } from "../utils/dom.js";
+import {
+  handleTxtExport,
+  handleSvgExport,
+  handlePngExport,
+} from "../utils/exportHandlers.js";
 
 /**
  * @class Toolbar
@@ -24,23 +29,31 @@ export class Toolbar {
    * @param {Array} sitemapArray - Array of sitemap nodes
    */
   constructor(processor, sitemapArray) {
-      this.processor = processor;
-      this.sitemapArray = sitemapArray;
-      this.currentMermaidText = '';
-        
-      this.toolbar = createElement('div', '', {
-          style: {
-              position: 'fixed',
-              display: 'flex',
-              flexDirection: 'row',
-              ...CONFIG.toolbar.style
-          }
-      });
-        
-      this.buttons = this.createButtons();
-      this.attachButtons();
-      document.body.appendChild(this.toolbar);
-  }
+    this.processor = processor;
+    this.sitemapArray = sitemapArray;
+    this.currentMermaidText = '';
+    
+
+    this.toolbar = createElement('div', '', {
+        style: {
+            position: 'fixed',
+            display: 'flex',
+            flexDirection: 'row',
+            bottom: '2vh',
+            right: '2vw',
+            backgroundColor: 'white',
+            padding: '10px',
+            border: '1px solid #ccc',
+            zIndex: '1000',
+            gap: '3ch'
+        }
+    });
+    
+    this.buttons = this.createButtons();
+    this.attachButtons();
+    document.body.appendChild(this.toolbar);
+}
+
 
   /**
    * @private
@@ -48,21 +61,20 @@ export class Toolbar {
    * @returns {Object.<string, HTMLButtonElement>} Map of button keys to button elements
    */
   createButtons() {
-      const getIcon = (type) => ({
-          copy: '📋',
-          download: '📄',
-          url: '🔗',
-          generate: ''
-      }[type] || '');
+    
 
-      return Object.entries(CONFIG.buttons).reduce((buttons, [key, config]) => {
-          buttons[key] = createElement('button', `${getIcon(config.type)}${config.text}`, {
-              disabled: config.type !== 'generate',
-              dataset: { buttonType: config.type },
-              onclick: () => this.handleButtonClick(key, config.type)
-          });
-          return buttons;
-      }, {});
+    return Object.entries(BUTTONS).reduce((buttons, [key, config]) => {
+      buttons[key] = createElement(
+        "button",
+        `${config.text}`,
+        {
+          disabled: config.type !== "generate",
+          dataset: { buttonType: config.type },
+          onclick: () => this.handleButtonClick(key, config.type),
+        }
+      );
+      return buttons;
+    }, {});
   }
 
   /**
@@ -72,26 +84,26 @@ export class Toolbar {
    * @param {string} type - Button type (generate|copy|download|url)
    */
   handleButtonClick(key, type) {
-      const handlers = {
-          generate: {
-              all: () => this.handleAllClick(),
-              startHere: () => this.handleStartHereClick()
-          },
-          copy: {
-            copy: () => copyToClipboard(this.currentMermaidText)
-          },
-          download: {
-            txtDownload: () => handleTxtExport(this.currentMermaidText),
-            svgDownload: () => handleSvgExport(this.currentMermaidText, true),
-            pngDownload: () => handlePngExport(this.currentMermaidText, true)
-          },
-          url: {
-              svgUrl: () => handleSvgExport(this.currentMermaidText),
-              pngUrl: () => handlePngExport(this.currentMermaidText)
-          }
-      };
+    const handlers = {
+      generate: {
+        all: () => this.handleAllClick(),
+        startHere: () => this.handleStartHereClick(),
+      },
+      copy: {
+        copy: () => copyToClipboard(this.currentMermaidText),
+      },
+      download: {
+        txtDownload: () => handleTxtExport(this.currentMermaidText),
+        svgDownload: () => handleSvgExport(this.currentMermaidText, true),
+        pngDownload: () => handlePngExport(this.currentMermaidText, true),
+      },
+      url: {
+        svgUrl: () => handleSvgExport(this.currentMermaidText),
+        pngUrl: () => handlePngExport(this.currentMermaidText),
+      },
+    };
 
-      handlers[type]?.[key]?.();
+    handlers[type]?.[key]?.();
   }
 
   /**
@@ -100,10 +112,11 @@ export class Toolbar {
    * @description Processes complete sitemap and generates Mermaid markup
    */
   handleAllClick() {
-      const processedNodes = this.processor.processSitemap(this.sitemapArray);
-      this.currentMermaidText = this.processor.generateMermaidMarkup(processedNodes);
-      copyToClipboard(this.currentMermaidText);
-      this.enableExportButtons();
+    const processedNodes = this.processor.processSitemap(this.sitemapArray);
+    this.currentMermaidText =
+      this.processor.generateMermaidMarkup(processedNodes);
+    copyToClipboard(this.currentMermaidText);
+    this.enableExportButtons();
   }
 
   /**
@@ -112,14 +125,18 @@ export class Toolbar {
    * @description Processes sitemap from current node and generates Mermaid markup
    */
   handleStartHereClick() {
-      const currentId = $axure.page.shortId;
-      const selectedNode = this.processor.findCurrentNode(this.sitemapArray, currentId);
-      if (selectedNode) {
-          const processedNodes = this.processor.processSitemap([selectedNode]);
-          this.currentMermaidText = this.processor.generateMermaidMarkup(processedNodes);
-          copyToClipboard(this.currentMermaidText);
-          this.enableExportButtons();
-      }
+    const currentId = $axure.page.shortId;
+    const selectedNode = this.processor.findCurrentNode(
+      this.sitemapArray,
+      currentId
+    );
+    if (selectedNode) {
+      const processedNodes = this.processor.processSitemap([selectedNode]);
+      this.currentMermaidText =
+        this.processor.generateMermaidMarkup(processedNodes);
+      copyToClipboard(this.currentMermaidText);
+      this.enableExportButtons();
+    }
   }
 
   /**
@@ -128,11 +145,11 @@ export class Toolbar {
    * @description Enables all non-generate buttons after markup generation
    */
   enableExportButtons() {
-      Object.values(this.buttons).forEach(button => {
-          if (button.dataset.buttonType !== 'generate') {
-              button.disabled = false;
-          }
-      });
+    Object.values(this.buttons).forEach((button) => {
+      if (button.dataset.buttonType !== "generate") {
+        button.disabled = false;
+      }
+    });
   }
 
   /**
@@ -141,21 +158,52 @@ export class Toolbar {
    * @description Removes toolbar from DOM
    */
   unload() {
-      this.toolbar?.parentNode?.removeChild(this.toolbar);
+    this.toolbar?.parentNode?.removeChild(this.toolbar);
   }
 
-attachButtons() {
-    // Add all buttons in the order defined in CONFIG
-    Object.keys(CONFIG.buttons).forEach(key => {
-        this.toolbar.appendChild(this.buttons[key]);
+  attachButtons() {
+    LAYOUT.forEach(([label, buttonKeys]) => {
+      // Create group container
+      const group = createElement("div", "", {
+        style: {
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          fontSize: ".875rem",
+          gap: ".25rem"
+        },
+      });
+
+      // Add label
+      const labelElement = createElement("span", label);
+      group.appendChild(labelElement);
+
+      // Add button container
+      const buttonContainer = createElement("div", "", {
+        style: {
+          display: "flex",
+          gap: ".125rem",
+        },
+      });
+
+      // Add buttons
+      buttonKeys.forEach((key) => {
+        buttonContainer.appendChild(this.buttons[key]);
+      });
+
+      group.appendChild(buttonContainer);
+      this.toolbar.appendChild(group);
     });
 
     // Create and append close button last
-    const closeButton = createElement('button', 'X', {
-        onclick: () => this.unload()
+    const closeButton = createElement("button", "X", {
+      style: {
+        height: "2rem",
+        width: "2rem",
+        margin: "auto 0"
+      },
+      onclick: () => this.unload(),
     });
     this.toolbar.appendChild(closeButton);
-}
-
-
+  }
 }
