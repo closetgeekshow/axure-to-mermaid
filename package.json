@@ -15,7 +15,8 @@
     "build:inject-min": "esbuild src/inject.js --bundle --format=iife --minify --outfile=./dist/axure-to-mermaid-injected.min.js && printf 'javascript:' | cat - ./dist/axure-to-mermaid-injected.min.js > temp && mv temp ./dist/axure-to-mermaid-injected.min.js",
     "build": "npm run build:inject && npm run build:inject-min && npm run size-report",
     "size-report": "ls -lh ./dist | awk 'BEGIN {print \"Size\\tFile\\n----\\t----\"} NR>1 {print $5\"\\t\"$9}' | column -t"
-  },  "keywords": [],
-  "author": "",
+  },  
+  "keywords": ["axure","mermaid","iife","bookmarklet","sitemap"],
+  "author": "closetgeekshow",
   "license": "MIT"
 }
