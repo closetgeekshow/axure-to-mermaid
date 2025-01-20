@@ -24,6 +24,6 @@ export function serializeMermaid(mermaidText) {
 
   const json = JSON.stringify(state);
   const data = new TextEncoder().encode(json);
-  const compressed = deflate(data, { level: 9 });
-  return fromUint8Array(compressed, true);
+  const compressed = pako.deflate(data, { level: 9 });
+  return Base64.fromUint8Array(compressed, true);
 }

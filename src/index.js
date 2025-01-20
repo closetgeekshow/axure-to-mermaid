@@ -17,7 +17,6 @@ export class AxureToMermaid {
    * @async
    */
   async init() {
-    await loadDependencies();
     
     const project = {
       name: $axure.document.configuration.projectName,

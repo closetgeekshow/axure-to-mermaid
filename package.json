@@ -5,17 +5,15 @@
   },
   "name": "axure-to-mermaid",
   "version": "1.0.0",
-  "description": "This script is designed to be used with [Axure RP](https://axure.com) (a phenomenal wireframing tool) prototypes, when it is run it will copy your published sitemap tree as a mermaid flowchart to your clipboard.",
+  "description": "This script is designed to be used with [Axure RP](https://axure.com) (a phenomenal wireframing tool) prototypes to automatically generate Mermaid flowchart diagrams of the sitemap tree.",
   "main": "axure-to-mermaid.js",
   "devDependencies": {
     "esbuild": "0.24.2"
   },
   "scripts": {
-    "build:bundle": "esbuild src/bundle.js --bundle --format=esm --outfile=./dist/axure-to-mermaid.esm.js",
-    "build:bundle-min": "esbuild src/bundle.js --bundle --minify --format=esm --tree-shaking --outfile=./dist/axure-to-mermaid.esm.min.js",
-    "build:inject": "esbuild src/inject.js --bundle --format=iife --outfile=./dist/axure-to-mermaid-injected.js",
-    "build:inject-min": "esbuild src/inject.js --bundle --format=iife --minify --outfile=./dist/axure-to-mermaid-injected.min.js",
-    "build": "npm run build:bundle && npm run build:bundle-min && npm run build:inject && npm run build:inject-min && npm run size-report",
+    "build:inject": "esbuild src/inject.js --bundle --format=iife --outfile=./dist/axure-to-mermaid-injected.js && printf 'javascript:' | cat - ./dist/axure-to-mermaid-injected.js > temp && mv temp ./dist/axure-to-mermaid-injected.js",
+    "build:inject-min": "esbuild src/inject.js --bundle --format=iife --minify --outfile=./dist/axure-to-mermaid-injected.min.js && printf 'javascript:' | cat - ./dist/axure-to-mermaid-injected.min.js > temp && mv temp ./dist/axure-to-mermaid-injected.min.js",
+    "build": "npm run build:inject && npm run build:inject-min && npm run size-report",
     "size-report": "ls -lh ./dist | awk 'BEGIN {print \"Size\\tFile\\n----\\t----\"} NR>1 {print $5\"\\t\"$9}' | column -t"
   },  "keywords": [],
   "author": "",
