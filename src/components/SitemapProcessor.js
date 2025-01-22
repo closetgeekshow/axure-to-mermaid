@@ -41,23 +41,31 @@ export class SitemapProcessor {
    * @returns {string} Mermaid markup text
    */
   generateMermaidMarkup(nodes) {
-    let mermaidText = `---\nconfig:\n  title: ${$axure.document.configuration.projectName} Sitemap\n  theme: default\n---\n\ngraph TD\n  classDef containers fill:transparent,stroke-width:0\n\n`;
+    let mermaidText = `graph TD
+    classDef containers fill:transparent,stroke-width:0
+    
+    `;
 
     const maxLevel = Math.max(...nodes.map((n) => n.level));
 
     for (let level = 1; level <= maxLevel; level++) {
       const tierNodes = nodes.filter((n) => n.level === level);
-      mermaidText += `  subgraph tier${level}[" "]\n`;
+      mermaidText += `  subgraph tier${level}[" "]
+      `;
 
       tierNodes.forEach((node) => {
         if (level === 1) {
-          mermaidText += `    ${node.id}["${node.name}"]\n`;
+          mermaidText += `    ${node.id}["${node.name}"]
+          `;
         } else {
-          mermaidText += `    ${node.parentId} --- ${node.id}["${node.name}"]\n`;
+          mermaidText += `    ${node.parentId} --- ${node.id}["${node.name}"]
+          `;
         }
       });
 
-      mermaidText += `  end\n\n`;
+      mermaidText += `  end
+      
+      `;
     }
 
     mermaidText += `  class ${Array.from({ length: maxLevel }, (_, i) => `tier${i + 1}`).join(",")} containers`;
