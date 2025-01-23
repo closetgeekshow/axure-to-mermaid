@@ -54,6 +54,7 @@ javascript:(() => {
     return element;
   }
   function copyToClipboard(copyText) {
+    console.log(copyText);
     const textarea = document.createElement("textarea");
     textarea.value = copyText;
     document.body.appendChild(textarea);
@@ -178,7 +179,10 @@ javascript:(() => {
           startHere: () => this.handleStartHereClick()
         },
         copy: {
-          copy: () => copyToClipboard(this.currentMermaidText)
+          copy: () => {
+            console.log(this.currentMermaidText);
+            copyToClipboard(this.currentMermaidText);
+          }
         },
         download: {
           txtDownload: () => handleTxtExport(this.currentMermaidText),
@@ -204,21 +208,47 @@ javascript:(() => {
       this.enableExportButtons();
     }
     /**
-     * @public
-     * @method handleStartHereClick
-     * @description Processes sitemap from current node and generates Mermaid markup
-     */
+      * @public
+      * @method handleStartHereClick
+      * @description Processes sitemap from current node and generates Mermaid markup
+    */
     handleStartHereClick() {
-      const currentId = $axure.page.shortId;
-      const selectedNode = this.processor.findCurrentNode(
-        this.sitemapArray,
-        currentId
-      );
-      if (selectedNode) {
-        const processedNodes = this.processor.processSitemap([selectedNode]);
-        this.currentMermaidText = this.processor.generateMermaidMarkup(processedNodes);
-        copyToClipboard(this.currentMermaidText);
-        this.enableExportButtons();
+      let currentId = $axure.page.shortId;
+      if (!currentId) {
+        const parentUrlParams = new URLSearchParams(window.parent.location.search);
+        currentId = parentUrlParams.get("id");
+      }
+      if (!currentId) {
+        const pageParam = new URLSearchParams(window.parent.location.search).get("p");
+        if (pageParam) {
+          const findNodeByUrl = (nodes) => {
+            for (const node of nodes) {
+              if (node.url && node.url.replace(".html", "") === pageParam) {
+                return node.id;
+              }
+              if (node.children) {
+                const found = findNodeByUrl(node.children);
+                if (found) {
+                  return found;
+                }
+              }
+            }
+            return null;
+          };
+          currentId = findNodeByUrl($axure.document.sitemap.rootNodes);
+        }
+      }
+      if (currentId) {
+        const selectedNode = this.processor.findCurrentNode(
+          this.sitemapArray,
+          currentId
+        );
+        if (selectedNode) {
+          const processedNodes = this.processor.processSitemap([selectedNode]);
+          this.currentMermaidText = this.processor.generateMermaidMarkup(processedNodes);
+          copyToClipboard(this.currentMermaidText);
+          this.enableExportButtons();
+        }
       }
     }
     /**
@@ -314,35 +344,29 @@ javascript:(() => {
      * @returns {string} Mermaid markup text
      */
     generateMermaidMarkup(nodes) {
-      let mermaidText = `---
-config:
-  title: ${$axure.document.configuration.projectName} Sitemap
-  theme: default
----
-
-graph TD
-  classDef containers fill:transparent,stroke-width:0
-
-`;
+      const lines = [
+        "graph TD",
+        "classDef containers fill:transparent,stroke-width:0",
+        ""
+      ];
       const maxLevel = Math.max(...nodes.map((n) => n.level));
       for (let level = 1; level <= maxLevel; level++) {
         const tierNodes = nodes.filter((n) => n.level === level);
-        mermaidText += `  subgraph tier${level}[" "]
-`;
+        lines.push(``);
+        lines.push(`  subgraph tier${level}[" "]`);
         tierNodes.forEach((node) => {
           if (level === 1) {
-            mermaidText += `    ${node.id}["${node.name}"]
-`;
+            lines.push(`    ${node.id}["${node.name}"]`);
           } else {
-            mermaidText += `    ${node.parentId} --- ${node.id}["${node.name}"]
-`;
+            lines.push(`    ${node.parentId} --- ${node.id}["${node.name}"]`);
           }
         });
-        mermaidText += `  end
-
-`;
+        lines.push("  end", "");
       }
-      mermaidText += `  class ${Array.from({ length: maxLevel }, (_, i) => `tier${i + 1}`).join(",")} containers`;
+      lines.push(``);
+      lines.push(`  class ${Array.from({ length: maxLevel }, (_, i) => `tier${i + 1}`).join(",")} containers`);
+      const mermaidText = lines.join("\n");
+      console.log(mermaidText);
       return mermaidText;
     }
     /**

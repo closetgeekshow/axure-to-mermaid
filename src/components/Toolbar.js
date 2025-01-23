@@ -90,7 +90,10 @@ export class Toolbar {
         startHere: () => this.handleStartHereClick(),
       },
       copy: {
-        copy: () => copyToClipboard(this.currentMermaidText),
+        copy: () => {
+          console.log(this.currentMermaidText)
+          copyToClipboard(this.currentMermaidText)
+        },
       },
       download: {
         txtDownload: () => handleTxtExport(this.currentMermaidText),
@@ -123,22 +126,52 @@ export class Toolbar {
    * @public
    * @method handleStartHereClick
    * @description Processes sitemap from current node and generates Mermaid markup
-   */
-  handleStartHereClick() {
-    const currentId = $axure.page.shortId;
-    const selectedNode = this.processor.findCurrentNode(
-      this.sitemapArray,
-      currentId
-    );
-    if (selectedNode) {
-      const processedNodes = this.processor.processSitemap([selectedNode]);
-      this.currentMermaidText =
-        this.processor.generateMermaidMarkup(processedNodes);
-      copyToClipboard(this.currentMermaidText);
-      this.enableExportButtons();
-    }
-  }
+ */
+handleStartHereClick() {
+    let currentId = $axure.page.shortId;
 
+    if (!currentId) {
+        // Access the query string from the parent window
+        const parentUrlParams = new URLSearchParams(window.parent.location.search);
+        currentId = parentUrlParams.get('id');
+    }
+
+    if (!currentId) {
+        // Deep search in $axure.document.sitemap.rootNodes
+        const pageParam = new URLSearchParams(window.parent.location.search).get('p');
+        if (pageParam) {
+            const findNodeByUrl = (nodes) => {
+                for (const node of nodes) {
+                    if (node.url && node.url.replace('.html', '') === pageParam) {
+                        return node.id;
+                    }
+                    if (node.children) {
+                        const found = findNodeByUrl(node.children);
+                        if (found) {
+                            return found;
+                        }
+                    }
+                }
+                return null;
+            };
+            currentId = findNodeByUrl($axure.document.sitemap.rootNodes);
+        }
+    }
+
+    if (currentId) {
+        const selectedNode = this.processor.findCurrentNode(
+            this.sitemapArray,
+            currentId
+        );
+        if (selectedNode) {
+            const processedNodes = this.processor.processSitemap([selectedNode]);
+            this.currentMermaidText =
+                this.processor.generateMermaidMarkup(processedNodes);
+            copyToClipboard(this.currentMermaidText);
+            this.enableExportButtons();
+        }
+    }
+}
   /**
    * @public
    * @method enableExportButtons
