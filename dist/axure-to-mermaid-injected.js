@@ -54,7 +54,7 @@ javascript:(() => {
     return element;
   }
   function copyToClipboard(copyText) {
-    console.log(copyText);
+    console.log(JSON.stringify(copyText));
     const textarea = document.createElement("textarea");
     textarea.value = copyText;
     document.body.appendChild(textarea);
