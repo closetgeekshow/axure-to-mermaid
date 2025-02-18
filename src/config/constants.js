@@ -45,3 +45,9 @@ export const DEPENDENCIES = [
   "https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js",
   "https://cdn.jsdelivr.net/npm/js-base64@3.7.5/base64.min.js",
 ];
+
+/**
+ * URLs of required external CSS libraries
+ * @constant {string[]}
+ */
+export const EXTERNALCSS = ["https://matcha.mizu.sh/matcha.lite.css"]

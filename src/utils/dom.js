@@ -20,19 +20,25 @@ export function createElement(elementType, textContent = '', props = {}) {
       Object.entries(value).forEach(([styleKey, styleValue]) => {
         element.style[styleKey] = styleValue;
       });
-    } else {
+    } 
+    else if (key === 'dataset' && typeof value === 'object') {
+      Object.entries(value).forEach(([dataKey, dataValue]) => {
+        element.dataset[dataKey] = dataValue;
+      });
+    }
+    else {
       element[key] = value;
     }
   }
   return element;
 }
-
 /**
  * Copies the specified text to the clipboard
  * @function copyToClipboard
  * @param {string} copyText - The text to copy to the clipboard
  */
 export function copyToClipboard(copyText) {
+  
   navigator.clipboard.writeText(copyText).then(() => {
     console.log('Raw text copied:', copyText);
   });

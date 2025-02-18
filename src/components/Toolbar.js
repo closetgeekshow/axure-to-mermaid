@@ -10,7 +10,7 @@
  * @requires handlePngExport
  */
 
-import { BUTTONS, LAYOUT } from "../config/constants.js";
+import { BUTTONS, LAYOUT, EXTERNALCSS } from "../config/constants.js";
 import { createElement, copyToClipboard } from "../utils/dom.js";
 import {
   handleTxtExport,
@@ -26,53 +26,66 @@ export class Toolbar {
   /**
    * @constructor
    * @param {SitemapProcessor} processor - Instance of SitemapProcessor
-   * @param {Array} sitemapArray - Array of sitemap nodes
-   */
-  constructor(processor, sitemapArray) {
+    * @param {Array} sitemapArray - Array of sitemap nodes
+    */
+constructor(processor, sitemapArray) {
     this.processor = processor;
     this.sitemapArray = sitemapArray;
-    this.currentMermaidText = '';
-    
+    this.currentMermaidText = "";
 
-    this.toolbar = createElement('div', '', {
-        style: {
-            position: 'fixed',
-            display: 'flex',
-            flexDirection: 'row',
-            bottom: '2vh',
-            right: '2vw',
-            backgroundColor: 'white',
-            padding: '10px',
-            border: '1px solid #ccc',
-            zIndex: '1000',
-            gap: '3ch'
-        }
+    // Create base container
+    this.container = createElement("div", "", {
+        id: "toolbar"
     });
     
+    // Create shadow root
+    this.shadow = this.container.attachShadow({mode: 'open'});
+
+    // Load external CSS into shadow DOM
+    for (const css of EXTERNALCSS) {
+        this.loadCSSInShadow(css);
+    }
+
+    // Create toolbar within shadow DOM
+    this.toolbar = createElement("div", "", {
+        style: {
+            position: "fixed",
+            display: "flex",
+            flexDirection: "row",
+            bottom: "2vh",
+            right: "2vw",
+            backgroundColor: "white",
+            padding: "10px",
+            border: "1px solid #ccc",
+            zIndex: "1000",
+            gap: "3ch",
+        }       
+    });
+
     this.buttons = this.createButtons();
     this.attachButtons();
-    document.body.appendChild(this.toolbar);
+    this.shadow.appendChild(this.toolbar);
+    document.body.appendChild(this.container);
 }
 
-
-  /**
+loadCSSInShadow(url) {
+    const style = document.createElement('style');
+    style.textContent = `@import "${url}";`;
+    this.shadow.appendChild(style);
+}  /**
    * @private
    * @method createButtons
    * @returns {Object.<string, HTMLButtonElement>} Map of button keys to button elements
    */
   createButtons() {
-    
-
     return Object.entries(BUTTONS).reduce((buttons, [key, config]) => {
-      buttons[key] = createElement(
-        "button",
-        `${config.text}`,
-        {
-          disabled: config.type !== "generate",
-          dataset: { buttonType: config.type },
-          onclick: () => this.handleButtonClick(key, config.type),
-        }
-      );
+      buttons[key] = createElement("button", `${config.text}`, {
+        disabled: config.type !== "generate",
+        dataset: {
+          buttonType: config.type,
+        },
+        onclick: () => this.handleButtonClick(key, config.type),
+      });
       return buttons;
     }, {});
   }
@@ -91,8 +104,8 @@ export class Toolbar {
       },
       copy: {
         copy: () => {
-          console.log(this.currentMermaidText)
-          copyToClipboard(this.currentMermaidText)
+          console.log(this.currentMermaidText);
+          copyToClipboard(this.currentMermaidText);
         },
       },
       download: {
@@ -116,74 +129,66 @@ export class Toolbar {
    */
   handleAllClick() {
     const processedNodes = this.processor.processSitemap(this.sitemapArray);
-    
-    // Add debug logging here
-    console.log("Before assignment:", {
-        asString: this.processor.generateMermaidMarkup(processedNodes),
-        asLines: this.processor.generateMermaidMarkup(processedNodes).split('\n')
-    });
-    
-    this.currentMermaidText = this.processor.generateMermaidMarkup(processedNodes);
-    
-    // And here
-    console.log("After assignment:", {
-        asString: this.currentMermaidText,
-        asLines: this.currentMermaidText.split('\n')
-    });
-    
+    this.currentMermaidText =
+      this.processor.generateMermaidMarkup(processedNodes);
+
     copyToClipboard(this.currentMermaidText);
     this.enableExportButtons();
-}
+  }
   /**
    * @public
    * @method handleStartHereClick
    * @description Processes sitemap from current node and generates Mermaid markup
- */
-handleStartHereClick() {
-    let currentId = $axure.page.shortId;
+   */
+  handleStartHereClick() {
+    let currentId = top.$axure.page.shortId;
 
     if (!currentId) {
-        // Access the query string from the parent window
-        const parentUrlParams = new URLSearchParams(window.parent.location.search);
-        currentId = parentUrlParams.get('id');
+      // Access the query string from the parent window
+      const parentUrlParams = new URLSearchParams(
+        window.parent.location.search
+      );
+      currentId = parentUrlParams.get("id");
     }
 
     if (!currentId) {
-        // Deep search in $axure.document.sitemap.rootNodes
-        const pageParam = new URLSearchParams(window.parent.location.search).get('p');
-        if (pageParam) {
-            const findNodeByUrl = (nodes) => {
-                for (const node of nodes) {
-                    if (node.url && node.url.replace('.html', '') === pageParam) {
-                        return node.id;
-                    }
-                    if (node.children) {
-                        const found = findNodeByUrl(node.children);
-                        if (found) {
-                            return found;
-                        }
-                    }
-                }
-                return null;
-            };
-            currentId = findNodeByUrl($axure.document.sitemap.rootNodes);
-        }
+      // Deep search in $axure.document.sitemap.rootNodes
+      const pageParam = new URLSearchParams(window.parent.location.search).get(
+        "p"
+      );
+      if (pageParam) {
+        const findNodeByUrl = (nodes) => {
+          for (const node of nodes) {
+            if (node.url && node.url.replace(".html", "") === pageParam) {
+              return node.id;
+            }
+            if (node.children) {
+              const found = findNodeByUrl(node.children);
+              if (found) {
+                return found;
+              }
+            }
+          }
+          return null;
+        };
+        currentId = findNodeByUrl($axure.document.sitemap.rootNodes);
+      }
     }
 
     if (currentId) {
-        const selectedNode = this.processor.findCurrentNode(
-            this.sitemapArray,
-            currentId
-        );
-        if (selectedNode) {
-            const processedNodes = this.processor.processSitemap([selectedNode]);
-            this.currentMermaidText =
-                this.processor.generateMermaidMarkup(processedNodes);
-            copyToClipboard(this.currentMermaidText);
-            this.enableExportButtons();
-        }
+      const selectedNode = this.processor.findCurrentNode(
+        this.sitemapArray,
+        currentId
+      );
+      if (selectedNode) {
+        const processedNodes = this.processor.processSitemap([selectedNode]);
+        this.currentMermaidText =
+          this.processor.generateMermaidMarkup(processedNodes);
+        copyToClipboard(this.currentMermaidText);
+        this.enableExportButtons();
+      }
     }
-}
+  }
   /**
    * @public
    * @method enableExportButtons
@@ -215,7 +220,7 @@ handleStartHereClick() {
           flexDirection: "column",
           alignItems: "center",
           fontSize: ".875rem",
-          gap: ".25rem"
+          gap: ".25rem",
         },
       });
 
@@ -245,7 +250,10 @@ handleStartHereClick() {
       style: {
         height: "2rem",
         width: "2rem",
-        margin: "auto 0"
+        display: "flex",
+        alignItems: "center",    // Vertical center
+        justifyContent: "center", // Horizontal center
+        margin: "auto 0",
       },
       onclick: () => this.unload(),
     });

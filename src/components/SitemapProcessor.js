@@ -45,8 +45,8 @@ export class SitemapProcessor {
     // Initialize an array to hold each line of the Mermaid markup
     const lines = [
       "graph TD",
-      "classDef containers fill:transparent,stroke-width:0",
-      "",
+      `classDef containers fill:transparent,stroke-width:0`,
+      ``,
     ];
 
     const maxLevel = Math.max(...nodes.map((n) => n.level));
@@ -64,7 +64,7 @@ export class SitemapProcessor {
         }
       });
 
-      lines.push("  end", "");
+      lines.push(`  end`, ``);
     }
 
     lines.push(``); // add an empty line before style assignments
@@ -76,7 +76,7 @@ export class SitemapProcessor {
     );
 
     // Join the lines with '\n' to form the final Mermaid markup string
-    const mermaidText = lines.join("\r\n");
+    const mermaidText = lines.join('\n');
 
     return mermaidText;
   }

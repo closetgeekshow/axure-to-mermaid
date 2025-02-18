@@ -20,6 +20,7 @@ javascript:(() => {
     "https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js",
     "https://cdn.jsdelivr.net/npm/js-base64@3.7.5/base64.min.js"
   ];
+  var EXTERNALCSS = ["https://matcha.mizu.sh/matcha.lite.css"];
 
   // src/utils/dependencies.js
   async function loadDependencies() {
@@ -46,6 +47,10 @@ javascript:(() => {
       if (key === "style" && typeof value === "object") {
         Object.entries(value).forEach(([styleKey, styleValue]) => {
           element.style[styleKey] = styleValue;
+        });
+      } else if (key === "dataset" && typeof value === "object") {
+        Object.entries(value).forEach(([dataKey, dataValue]) => {
+          element.dataset[dataKey] = dataValue;
         });
       } else {
         element[key] = value;
@@ -119,12 +124,19 @@ javascript:(() => {
     /**
      * @constructor
      * @param {SitemapProcessor} processor - Instance of SitemapProcessor
-     * @param {Array} sitemapArray - Array of sitemap nodes
-     */
+      * @param {Array} sitemapArray - Array of sitemap nodes
+      */
     constructor(processor, sitemapArray) {
       this.processor = processor;
       this.sitemapArray = sitemapArray;
       this.currentMermaidText = "";
+      this.container = createElement("div", "", {
+        id: "toolbar"
+      });
+      this.shadow = this.container.attachShadow({ mode: "open" });
+      for (const css of EXTERNALCSS) {
+        this.loadCSSInShadow(css);
+      }
       this.toolbar = createElement("div", "", {
         style: {
           position: "fixed",
@@ -141,24 +153,28 @@ javascript:(() => {
       });
       this.buttons = this.createButtons();
       this.attachButtons();
-      document.body.appendChild(this.toolbar);
+      this.shadow.appendChild(this.toolbar);
+      document.body.appendChild(this.container);
+    }
+    loadCSSInShadow(url) {
+      const style = document.createElement("style");
+      style.textContent = `@import "${url}";`;
+      this.shadow.appendChild(style);
     }
     /**
-     * @private
-     * @method createButtons
-     * @returns {Object.<string, HTMLButtonElement>} Map of button keys to button elements
-     */
+    * @private
+    * @method createButtons
+    * @returns {Object.<string, HTMLButtonElement>} Map of button keys to button elements
+    */
     createButtons() {
       return Object.entries(BUTTONS).reduce((buttons, [key, config]) => {
-        buttons[key] = createElement(
-          "button",
-          `${config.text}`,
-          {
-            disabled: config.type !== "generate",
-            dataset: { buttonType: config.type },
-            onclick: () => this.handleButtonClick(key, config.type)
-          }
-        );
+        buttons[key] = createElement("button", `${config.text}`, {
+          disabled: config.type !== "generate",
+          dataset: {
+            buttonType: config.type
+          },
+          onclick: () => this.handleButtonClick(key, config.type)
+        });
         return buttons;
       }, {});
     }
@@ -199,31 +215,27 @@ javascript:(() => {
      */
     handleAllClick() {
       const processedNodes = this.processor.processSitemap(this.sitemapArray);
-      console.log("Before assignment:", {
-        asString: this.processor.generateMermaidMarkup(processedNodes),
-        asLines: this.processor.generateMermaidMarkup(processedNodes).split("\n")
-      });
       this.currentMermaidText = this.processor.generateMermaidMarkup(processedNodes);
-      console.log("After assignment:", {
-        asString: this.currentMermaidText,
-        asLines: this.currentMermaidText.split("\n")
-      });
       copyToClipboard(this.currentMermaidText);
       this.enableExportButtons();
     }
     /**
-      * @public
-      * @method handleStartHereClick
-      * @description Processes sitemap from current node and generates Mermaid markup
-    */
+     * @public
+     * @method handleStartHereClick
+     * @description Processes sitemap from current node and generates Mermaid markup
+     */
     handleStartHereClick() {
-      let currentId = $axure.page.shortId;
+      let currentId = top.$axure.page.shortId;
       if (!currentId) {
-        const parentUrlParams = new URLSearchParams(window.parent.location.search);
+        const parentUrlParams = new URLSearchParams(
+          window.parent.location.search
+        );
         currentId = parentUrlParams.get("id");
       }
       if (!currentId) {
-        const pageParam = new URLSearchParams(window.parent.location.search).get("p");
+        const pageParam = new URLSearchParams(window.parent.location.search).get(
+          "p"
+        );
         if (pageParam) {
           const findNodeByUrl = (nodes) => {
             for (const node of nodes) {
@@ -304,6 +316,11 @@ javascript:(() => {
         style: {
           height: "2rem",
           width: "2rem",
+          display: "flex",
+          alignItems: "center",
+          // Vertical center
+          justifyContent: "center",
+          // Horizontal center
           margin: "auto 0"
         },
         onclick: () => this.unload()
@@ -350,8 +367,8 @@ javascript:(() => {
     generateMermaidMarkup(nodes) {
       const lines = [
         "graph TD",
-        "classDef containers fill:transparent,stroke-width:0",
-        ""
+        `classDef containers fill:transparent,stroke-width:0`,
+        ``
       ];
       const maxLevel = Math.max(...nodes.map((n) => n.level));
       for (let level = 1; level <= maxLevel; level++) {
@@ -365,7 +382,7 @@ javascript:(() => {
             lines.push(`    ${node.parentId} --- ${node.id}["${node.name}"]`);
           }
         });
-        lines.push("  end", "");
+        lines.push(`  end`, ``);
       }
       lines.push(``);
       lines.push(
@@ -374,7 +391,7 @@ javascript:(() => {
           (_, i) => `tier${i + 1}`
         ).join(",")} containers`
       );
-      const mermaidText = lines.join("\r\n");
+      const mermaidText = lines.join("\n");
       return mermaidText;
     }
     /**
@@ -407,13 +424,9 @@ javascript:(() => {
      * @async
      */
     async init() {
-      const project = {
-        name: $axure.document.configuration.projectName,
-        id: $axure.document.configuration.projectId
-      };
       this.toolbar = new Toolbar(
         new SitemapProcessor(),
-        $axure.document.sitemap.rootNodes
+        top.$axure.document.sitemap.rootNodes
       );
     }
   };
@@ -423,5 +436,19 @@ javascript:(() => {
     await loadDependencies();
     window.AxureToMermaid = new AxureToMermaid();
   }
-  initialize().catch(console.error);
+  var retryCount = 0;
+  var maxRetries = 5;
+  var retryInterval = 500;
+  async function preInit() {
+    while (retryCount < maxRetries) {
+      if (typeof top.$axure !== "undefined" && top.$axure.document) {
+        initialize().catch(console.error);
+        return;
+      }
+      console.warn("axure.document not ready.", "try: ", ++retryCount);
+      await new Promise((resolve) => setTimeout(resolve, retryInterval));
+    }
+    console.error("axure init failed");
+  }
+  preInit();
 })();

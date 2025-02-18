@@ -16,16 +16,11 @@ export class AxureToMermaid {
    * @async
    */
   async init() {
-    
-    const project = {
-      name: $axure.document.configuration.projectName,
-      id: $axure.document.configuration.projectId
-    };
-    
     // Fix: Pass processor and sitemap array correctly to Toolbar
     this.toolbar = new Toolbar(
       new SitemapProcessor(),
-      $axure.document.sitemap.rootNodes
+      top.$axure.document.sitemap.rootNodes
     );
   }
+  
 }
