@@ -33,11 +33,7 @@ export function createElement(elementType, textContent = '', props = {}) {
  * @param {string} copyText - The text to copy to the clipboard
  */
 export function copyToClipboard(copyText) {
-  console.log(JSON.stringify(copyText));
-  const textarea = document.createElement("textarea");
-  textarea.value = copyText;
-  document.body.appendChild(textarea);
-  textarea.select();
-  document.execCommand("copy");
-  document.body.removeChild(textarea);
+  navigator.clipboard.writeText(copyText).then(() => {
+    console.log('Raw text copied:', copyText);
+  });
 }

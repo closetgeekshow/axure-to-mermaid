@@ -54,16 +54,12 @@ javascript:(() => {
     return element;
   }
   function copyToClipboard(copyText) {
-    console.log(JSON.stringify(copyText));
-    const textarea = document.createElement("textarea");
-    textarea.value = copyText;
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand("copy");
-    document.body.removeChild(textarea);
+    navigator.clipboard.writeText(copyText).then(() => {
+      console.log("Raw text copied:", copyText);
+    });
   }
 
-  // src/utils/mermaid.js
+  // src/utils/mermaidUtils.js
   function serializeMermaid(mermaidText) {
     const state = {
       code: mermaidText,
@@ -203,7 +199,15 @@ javascript:(() => {
      */
     handleAllClick() {
       const processedNodes = this.processor.processSitemap(this.sitemapArray);
+      console.log("Before assignment:", {
+        asString: this.processor.generateMermaidMarkup(processedNodes),
+        asLines: this.processor.generateMermaidMarkup(processedNodes).split("\n")
+      });
       this.currentMermaidText = this.processor.generateMermaidMarkup(processedNodes);
+      console.log("After assignment:", {
+        asString: this.currentMermaidText,
+        asLines: this.currentMermaidText.split("\n")
+      });
       copyToClipboard(this.currentMermaidText);
       this.enableExportButtons();
     }
@@ -364,9 +368,13 @@ javascript:(() => {
         lines.push("  end", "");
       }
       lines.push(``);
-      lines.push(`  class ${Array.from({ length: maxLevel }, (_, i) => `tier${i + 1}`).join(",")} containers`);
-      const mermaidText = lines.join("\n");
-      console.log(mermaidText);
+      lines.push(
+        `  class ${Array.from(
+          { length: maxLevel },
+          (_, i) => `tier${i + 1}`
+        ).join(",")} containers`
+      );
+      const mermaidText = lines.join("\r\n");
       return mermaidText;
     }
     /**

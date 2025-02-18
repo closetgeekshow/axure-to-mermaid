@@ -116,12 +116,24 @@ export class Toolbar {
    */
   handleAllClick() {
     const processedNodes = this.processor.processSitemap(this.sitemapArray);
-    this.currentMermaidText =
-      this.processor.generateMermaidMarkup(processedNodes);
+    
+    // Add debug logging here
+    console.log("Before assignment:", {
+        asString: this.processor.generateMermaidMarkup(processedNodes),
+        asLines: this.processor.generateMermaidMarkup(processedNodes).split('\n')
+    });
+    
+    this.currentMermaidText = this.processor.generateMermaidMarkup(processedNodes);
+    
+    // And here
+    console.log("After assignment:", {
+        asString: this.currentMermaidText,
+        asLines: this.currentMermaidText.split('\n')
+    });
+    
     copyToClipboard(this.currentMermaidText);
     this.enableExportButtons();
-  }
-
+}
   /**
    * @public
    * @method handleStartHereClick

@@ -17,7 +17,7 @@
  */
 export const BUTTONS = {
   all: { text: "Full", type: "generate" },
-  startHere: { text: "Current", type: "generate" },
+  startHere: { text: "From Here", type: "generate" },
   copy: { text: "Copy", type: "copy" },
   txtDownload: { text: "TXT", type: "download" },
   svgUrl: { text: "SVG", type: "url" },
