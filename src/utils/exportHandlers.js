@@ -4,7 +4,7 @@
  * @requires serializeMermaid
  */
 
-import { serializeMermaid } from './mermaid.js';
+import { serializeMermaid } from './mermaidUtils.js';
 
 /**
  * Handles exporting Mermaid text as an SVG file
