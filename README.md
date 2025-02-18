@@ -1,11 +1,3 @@
----
-title: Readme file
-description: |-
-  Test 124
-  Dhfjf
-date: 2025-01-25
-Rofl: Lol
----
 # axure-to-mermaid
 ## What is it
 This script is designed to be used with [Axure RP](https://axure.com) prototypes. It creates a toolbar with options for generating a [Mermaid flowchart](https://mermaid.js.org/syntax/flowchart.html) from your sitemap with various options for output. 
