@@ -26,53 +26,53 @@ export class Toolbar {
   /**
    * @constructor
    * @param {SitemapProcessor} processor - Instance of SitemapProcessor
-    * @param {Array} sitemapArray - Array of sitemap nodes
-    */
-constructor(processor, sitemapArray) {
+   * @param {Array} sitemapArray - Array of sitemap nodes
+   */
+  constructor(processor, sitemapArray) {
     this.processor = processor;
     this.sitemapArray = sitemapArray;
     this.currentMermaidText = "";
 
     // Create base container
     this.container = createElement("div", "", {
-        id: "toolbar"
+      id: "toolbar"
     });
-    
+
     // Create shadow root
-    this.shadow = this.container.attachShadow({mode: 'open'});
+    this.shadow = this.container.attachShadow({ mode: "open" });
 
     // Load external CSS into shadow DOM
     for (const css of EXTERNALCSS) {
-        this.loadCSSInShadow(css);
+      this.loadCSSInShadow(css);
     }
 
     // Create toolbar within shadow DOM
     this.toolbar = createElement("div", "", {
-        style: {
-            position: "fixed",
-            display: "flex",
-            flexDirection: "row",
-            bottom: "2vh",
-            right: "2vw",
-            backgroundColor: "white",
-            padding: "10px",
-            border: "1px solid #ccc",
-            zIndex: "1000",
-            gap: "3ch",
-        }       
+      className: "bd-default bg-muted",
+      style: {
+        position: "fixed",
+        display: "flex",
+        flexDirection: "row",
+        bottom: "2vh",
+        right: "2vw",
+        padding: "10px",
+        zIndex: "1000",
+        gap: "3ch",
+      },
     });
 
     this.buttons = this.createButtons();
     this.attachButtons();
     this.shadow.appendChild(this.toolbar);
     document.body.appendChild(this.container);
-}
+  }
 
-loadCSSInShadow(url) {
-    const style = document.createElement('style');
+  loadCSSInShadow(url) {
+    const style = document.createElement("style");
     style.textContent = `@import "${url}";`;
     this.shadow.appendChild(style);
-}  /**
+  }
+  /**
    * @private
    * @method createButtons
    * @returns {Object.<string, HTMLButtonElement>} Map of button keys to button elements
@@ -86,6 +86,7 @@ loadCSSInShadow(url) {
         },
         onclick: () => this.handleButtonClick(key, config.type),
       });
+      buttons[key].classList.add("fg-muted");
       return buttons;
     }, {});
   }
@@ -247,16 +248,19 @@ loadCSSInShadow(url) {
 
     // Create and append close button last
     const closeButton = createElement("button", "X", {
+      className: "fg-muted",
       style: {
         height: "2rem",
         width: "2rem",
         display: "flex",
-        alignItems: "center",    // Vertical center
+        alignItems: "center", // Vertical center
         justifyContent: "center", // Horizontal center
         margin: "auto 0",
+        padding: "0",
       },
       onclick: () => this.unload(),
     });
+
     this.toolbar.appendChild(closeButton);
   }
 }

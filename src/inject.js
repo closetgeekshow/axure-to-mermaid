@@ -1,5 +1,6 @@
-import { loadDependencies } from './utils/dependencies.js';
-import { AxureToMermaid } from './index.js';
+import { RETRY } from "./config/constants.js";
+import { loadDependencies } from "./utils/dependencies.js";
+import { AxureToMermaid } from "./index.js";
 
 /**
  * Initializes the AxureToMermaid application after loading dependencies
@@ -7,28 +8,27 @@ import { AxureToMermaid } from './index.js';
  * @function initialize
  */
 async function initialize() {
-    await loadDependencies();
-    window.AxureToMermaid = new AxureToMermaid();
+  await loadDependencies();
+  window.AxureToMermaid = new AxureToMermaid();
 }
 
-let retryCount = 0, maxRetries = 5, retryInterval = 500;
+let retryCount = 0;
 
 async function preInit() {
-  while (retryCount < maxRetries) 
-    {
-      if (typeof top.$axure !== 'undefined' && top.$axure.document) {
-        initialize().catch(console.error);
-          return;
-      }
-        
-      console.warn('axure.document not ready.', 'try: ', ++retryCount);
-        
-      // Convert setTimeout to a Promise-based delay
-      await new Promise(resolve => setTimeout(resolve, retryInterval));
+  while (retryCount < RETRY.maxTries) {
+    if (typeof top.$axure !== "undefined" && top.$axure.document) {
+      initialize().catch(console.error);
+      return;
+    }
+
+    console.warn("axure.document not ready.", "try: ", ++retryCount);
+
+    // Convert setTimeout to a Promise-based delay
+    await new Promise((resolve) => setTimeout(resolve, RETRY.interval));
   }
-    
-  console.error('axure init failed');
+
+  console.error("axure init failed");
 }
 
-
+console.log("ding");
 preInit();

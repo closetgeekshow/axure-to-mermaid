@@ -28,6 +28,7 @@ export const BUTTONS = {
 
 /**
  * Layout structure for toolbar sections
+ * ["group label",["buttonObject"]]
  * @constant {Array<[string, string[]]>}
  */
 export const LAYOUT = [
@@ -50,4 +51,15 @@ export const DEPENDENCIES = [
  * URLs of required external CSS libraries
  * @constant {string[]}
  */
-export const EXTERNALCSS = ["https://matcha.mizu.sh/matcha.lite.css"]
+export const EXTERNALCSS = ["https://matcha.mizu.sh/matcha.css"]
+
+/**
+ * Retry variables used in the cloud platform.
+ * @constant {Object}
+ * @property {number} maxCount - The maximum number of retries.
+ * @property {number} interval - The interval in milliseconds between retries.
+ */
+export const RETRY = {
+  maxTries: 10,
+  interval: 1000
+}
