@@ -1,6 +1,6 @@
 # Axure to Mermaid Bookmarklet
 
-This bookmarklet script allows you to convert [Axure RP](https://axure.com) prototypes into [Mermaid flowchart](https://mermaid.js.org/syntax/flowchart.html) directly in your browser. It generates a toolbar that lets you export the sitemap as Mermaid markup, which can be copied, downloaded as TXT, SVG, or PNG, or shared via URL.
+This bookmarklet script allows you to convert [Axure RP](https://axure.com) prototype page trees into [Mermaid flowcharts](https://mermaid.js.org/syntax/flowchart.html) directly in your browser. It generates a toolbar that lets you export the sitemap as Mermaid markup, which can be copied, downloaded as TXT, SVG, or PNG, or shared via URL.
 
 ## Installation
 
