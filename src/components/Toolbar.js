@@ -35,7 +35,8 @@ export class Toolbar {
 
     // Create base container
     this.container = createElement("div", "", {
-      id: "toolbar"
+      id: "toolbar",
+      className: "xaxToolbar"
     });
 
     // Create shadow root
@@ -67,11 +68,38 @@ export class Toolbar {
     document.body.appendChild(this.container);
   }
 
-  loadCSSInShadow(url) {
-    const style = document.createElement("style");
-    style.textContent = `@import "${url}";`;
-    this.shadow.appendChild(style);
-  }
+  loadCSSInShadow = (url) => {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = url;
+    link.onload = () => {
+      console.log('CSS loaded, rendering toolbar');
+      this.toolbar.style.visibility = 'visible'; // Show toolbar after CSS loads
+    };
+    link.onerror = () => {
+      console.error('Failed to load CSS, using fallback styles');
+      const fallbackCSS = `
+        .xaxToolbar {
+          position: fixed;
+          bottom: 2vh;
+          right: 2vw;
+          padding: 10px;
+          z-index: 1000;
+          display: flex;
+          gap: 3ch;
+          background-color: #f0f0f0; /* Fallback color */
+          border: 1px solid #ccc; /* Fallback border */
+        }
+      `;
+
+      const fallbackStyle = document.createElement('style');
+      fallbackStyle.textContent = fallbackCSS;
+      this.shadow.appendChild(fallbackStyle);
+      this.shadow.appendChild(fallbackStyle); // Use fallback styles
+    };
+    this.shadow.appendChild(link);
+  };
+
   /**
    * @private
    * @method createButtons
