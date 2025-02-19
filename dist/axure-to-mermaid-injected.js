@@ -20,7 +20,11 @@ javascript:(() => {
     "https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js",
     "https://cdn.jsdelivr.net/npm/js-base64@3.7.5/base64.min.js"
   ];
-  var EXTERNALCSS = ["https://matcha.mizu.sh/matcha.lite.css"];
+  var EXTERNALCSS = ["https://matcha.mizu.sh/matcha.css"];
+  var RETRY = {
+    maxTries: 10,
+    interval: 1e3
+  };
 
   // src/utils/dependencies.js
   async function loadDependencies() {
@@ -124,8 +128,8 @@ javascript:(() => {
     /**
      * @constructor
      * @param {SitemapProcessor} processor - Instance of SitemapProcessor
-      * @param {Array} sitemapArray - Array of sitemap nodes
-      */
+     * @param {Array} sitemapArray - Array of sitemap nodes
+     */
     constructor(processor, sitemapArray) {
       this.processor = processor;
       this.sitemapArray = sitemapArray;
@@ -138,15 +142,14 @@ javascript:(() => {
         this.loadCSSInShadow(css);
       }
       this.toolbar = createElement("div", "", {
+        className: "bd-default bg-muted",
         style: {
           position: "fixed",
           display: "flex",
           flexDirection: "row",
           bottom: "2vh",
           right: "2vw",
-          backgroundColor: "white",
           padding: "10px",
-          border: "1px solid #ccc",
           zIndex: "1000",
           gap: "3ch"
         }
@@ -162,10 +165,10 @@ javascript:(() => {
       this.shadow.appendChild(style);
     }
     /**
-    * @private
-    * @method createButtons
-    * @returns {Object.<string, HTMLButtonElement>} Map of button keys to button elements
-    */
+     * @private
+     * @method createButtons
+     * @returns {Object.<string, HTMLButtonElement>} Map of button keys to button elements
+     */
     createButtons() {
       return Object.entries(BUTTONS).reduce((buttons, [key, config]) => {
         buttons[key] = createElement("button", `${config.text}`, {
@@ -175,6 +178,7 @@ javascript:(() => {
           },
           onclick: () => this.handleButtonClick(key, config.type)
         });
+        buttons[key].classList.add("fg-muted");
         return buttons;
       }, {});
     }
@@ -313,6 +317,7 @@ javascript:(() => {
         this.toolbar.appendChild(group);
       });
       const closeButton = createElement("button", "X", {
+        className: "fg-muted",
         style: {
           height: "2rem",
           width: "2rem",
@@ -321,7 +326,8 @@ javascript:(() => {
           // Vertical center
           justifyContent: "center",
           // Horizontal center
-          margin: "auto 0"
+          margin: "auto 0",
+          padding: "0"
         },
         onclick: () => this.unload()
       });
@@ -437,18 +443,17 @@ javascript:(() => {
     window.AxureToMermaid = new AxureToMermaid();
   }
   var retryCount = 0;
-  var maxRetries = 5;
-  var retryInterval = 500;
   async function preInit() {
-    while (retryCount < maxRetries) {
+    while (retryCount < RETRY.maxTries) {
       if (typeof top.$axure !== "undefined" && top.$axure.document) {
         initialize().catch(console.error);
         return;
       }
       console.warn("axure.document not ready.", "try: ", ++retryCount);
-      await new Promise((resolve) => setTimeout(resolve, retryInterval));
+      await new Promise((resolve) => setTimeout(resolve, RETRY.interval));
     }
     console.error("axure init failed");
   }
+  console.log("ding");
   preInit();
 })();
