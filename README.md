@@ -1,39 +1,31 @@
-# axure-to-mermaid
-## What is it
-This script is designed to be used with [Axure RP](https://axure.com) prototypes. It creates a toolbar with options for generating a [Mermaid flowchart](https://mermaid.js.org/syntax/flowchart.html) from your sitemap with various options for output. 
+# Axure to Mermaid Bookmarklet
 
-## How to use
-### As a bookmarklet
-I have a pre-generated minified [bookmarklet](/dist/axure-to-mermaid-injected.min.js), just click the bookmarklet to activate the [toolbar](#features].
+This bookmarklet script allows you to convert [Axure RP](https://axure.com) prototypes into [Mermaid flowchart](https://mermaid.js.org/syntax/flowchart.html) directly in your browser. It generates a toolbar that lets you export the sitemap as Mermaid markup, which can be copied, downloaded as TXT, SVG, or PNG, or shared via URL.
 
-### Inside an Axure shape 
-> [!NOTE]
-> ⚠ Currently broken, trying to figure out why.
+## Installation
 
-Because the bookmarklet is an [IIFE](https://developer.mozilla.org/en-US/docs/Glossary/IIFE), you can trigger it *inside* of a prototype with the **Open Link** action
+1. Copy the contents of [`dist/axure-to-mermaid.bundle-processed.js`](dist/axure-to-mermaid.bundle-processed.js)
+2. Add a bookmark on the bookmark toolbar in Chrome, Firefox or Edge
+3. Paste it as the URL. Double Check that the URL begins with `javascript:`
 
-
-1. Copy the full [script](/dist/axure-to-mermaid-injected.min.js) to your clipboard
-2. Create a new Interaction on a shape, like Click or Load
-3. Add an Open Link action<br><img src="https://docs.axure.com/assets/screenshots/tutorials/navigation-menu-links2.png" alt="Open Link Screenshot" height="300">
-5. Set **Link to:** Link to external URL and for the value paste in the bookmarklet script
-6. Open the page, when you trigger the interaction, the toolbar appears
+## Usage
+1. Navigate to an Axure prototype.
+2. Click the bookmarklet in your bookmarks toolbar.
+3. A toolbar will appear at the bottom right of the page.
+4. Use the toolbar to generate and export Mermaid diagrams.
 
 ## Features
-<img width="480" alt="axure-to-mermaid toolbar screenshot" src="axure-to-mermaid-screenshot.png">
+- Convert the entire sitemap or start from the current page.
+- Copy Mermaid markup to the clipboard.
+- Download Mermaid diagrams as TXT, SVG, or PNG. [**!**](#warning)
+- Share diagrams via URL. [**!**](#warning)
 
-* Sitemap
-  * Full: generates a markdown text of a flowchart of the entire sitemap tree
-  * Current: generates a markdown flowchart using the currently selected page as the root node (Note: there currently is no way to use this button on a folder, that's Future Brent's problem)
-* Code
-  * Copy - copies the mermaid text to your clipboard
-* Download
-  * TXT - downloads text file of the mermaid chart
-  * SVG - downloads svg file using Mermaid.Ink [**!**](#warning)
-  * PNG - downloads png file using Mermaid.Ink [**!**](#warning)
-* URL
-  * SVG - open svg file in a new tab using Mermaid.Ink [**!**](#warning)
-  * PNG - open png file in a new tab using Mermaid.Ink [**!**](#warning)
+<img src="axure-to-mermaid-screenshot.png" width="550">
+
+## Notes
+- Ensure that the Axure prototype is fully loaded before running the bookmarklet.
+- The bookmarklet relies on the Axure global object (`$axure`), so it only works inside the Axure prototype player.
+- I think it works as a Cloud plugin too
 
 <a name="warning"></a>
 > [!WARNING]  
@@ -43,7 +35,7 @@ Because the bookmarklet is an [IIFE](https://developer.mozilla.org/en-US/docs/Gl
 ## Example
 <details>
  <summary>This Axure Sitemap...</summary>
- <img src="image.png">
+ <img src="sitemap-example.png">
 </details>
  
 <details>
@@ -56,11 +48,11 @@ Because the bookmarklet is an [IIFE](https://developer.mozilla.org/en-US/docs/Gl
  <img src="https://github.com/user-attachments/assets/7169cff1-646c-4fd2-83ab-61e7040ba831" width="550">
 </details>
 
-
 ## "Dependencies"
 All dependency scripts are injected from CDN sources to keep bookmarklet at a reasonable size.
 * [js-base64](https://github.com/dankogai/js-base64)
 * [pako](https://github.com/nodeca/pako)
+* [matcha css](https://matcha.mizu.sh/)
 
 ## Prior art/inspiration
 * [@samuei's subgraph technique](https://stackoverflow.com/a/71036087/24246712)
@@ -73,9 +65,6 @@ All dependency scripts are injected from CDN sources to keep bookmarklet at a re
 * Label the Mermaid.Ink buttons better or include a warning modal the first time you click one
  
 ## Contact
-
-Brent Morris
-
 Bluesky: [@closetgeekshow.ca](https://bsky.app/profile/closetgeekshow.ca) | Mastodon: [@closetgeekshow@c.im](https://c.im/@Closetgeekshow) | Email: [closetgeekshow@gmail.com](mailto:closetgeekshow@gmail.com)
 
 Project Link: [https://github.com/closetgeekshow/axure-to-mermaid](https://github.com/closetgeekshow/axure-to-mermaid)
