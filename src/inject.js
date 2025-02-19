@@ -30,5 +30,4 @@ async function preInit() {
   console.error("axure init failed");
 }
 
-console.log("ding");
 preInit();

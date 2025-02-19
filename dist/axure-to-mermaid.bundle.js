@@ -1,4 +1,4 @@
-javascript:(() => {
+(() => {
   // src/config/constants.js
   var BUTTONS = {
     all: { text: "Full", type: "generate" },
@@ -454,6 +454,5 @@ javascript:(() => {
     }
     console.error("axure init failed");
   }
-  console.log("ding");
   preInit();
 })();
