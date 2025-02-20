@@ -1,6 +1,6 @@
 "use strict";
 
-import { RETRY, loadDependencies } from "./config/constants.js";
+import { loadDependencies } from "./config/constants.js";
 import { AxureToMermaid } from "./index.js";
 
 /**
@@ -13,22 +13,37 @@ async function initialize() {
   window.AxureToMermaid = new AxureToMermaid();
 }
 
-let retryCount = 0;
+async function waitForAxureDocument(timeout = 10000) {
+  if (top?.$axure?.document) return; // Exit early if already available
 
-async function preInit() {
-  while (retryCount < RETRY.maxTries) {
-    if (typeof top.$axure !== "undefined" && top.$axure.document) {
-      initialize();
-      return;
-    }
+  console.warn("axure.document not ready, waiting for changes.");
 
-    console.warn("axure.document not ready.", "try: ", ++retryCount);
+  // Create a promise that resolves when axure.document appears
+  const observerPromise = new Promise((resolve) => {
+    const observer = new MutationObserver((_, obs) => {
+      if (top?.$axure?.document) {
+        obs.disconnect(); // Stop observing
+        resolve(); // Resolve the promise
+      }
+    });
 
-    // Convert setTimeout to a Promise-based delay
-    await new Promise((resolve) => setTimeout(resolve, RETRY.interval));
-  }
+    observer.observe(document, { childList: true, subtree: true });
+  });
 
-  console.error("axure init failed");
+  // Create a separate promise that rejects after the timeout
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error("Timeout waiting for axure.document")), timeout)
+  );
+
+  // Wait for whichever happens first: observer or timeout
+  return Promise.race([observerPromise, timeoutPromise]);
 }
 
-preInit();
+async function preInit() {
+  try {
+    await waitForAxureDocument();
+    initialize();
+  } catch (error) {
+    console.error(error.message);
+  }
+}
