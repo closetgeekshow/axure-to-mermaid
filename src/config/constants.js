@@ -7,17 +7,6 @@ export const DEPENDENCIES = [
   "https://cdn.jsdelivr.net/npm/js-base64@3.7.5/base64.min.js",
 ];
 
-/**
- * Retry variables used in the cloud platform.
- * @constant {Object}
- * @property {number} maxCount - The maximum number of retries.
- * @property {number} interval - The interval in milliseconds between retries.
- */
-export const RETRY = {
-  maxTries: 10,
-  interval: 1000,
-};
-
 export const baseCSS = `
 :host {position: fixed;bottom: 2vh;right: 2vw;padding: 10px;z-index: 1000;display: flex;gap: 3ch;}
 .toolbar { visibility: hidden;position: fixed;display: flex;flex-direction: row;bottom: 2vh;right: 2vw;padding: 10px;z-index: 1000;gap: 3ch;}
