@@ -1,44 +1,4 @@
 /**
- * @file Configuration constants for the application's UI and external dependencies
- * @module CONFIG
- * @requires pako
- * @requires js-base64
- */
-
-/**
- * @typedef {Object} ButtonConfig
- * @property {string} text - Display text shown on the button
- * @property {('generate'|'copy'|'download'|'url')} type - Button action type
- */
-
-/**
- * Button configurations keyed by ID
- * @constant {Object.<string, ButtonConfig>} 
- */
-export const BUTTONS = {
-  all: { text: "Full", type: "generate" },
-  startHere: { text: "From Here", type: "generate" },
-  copy: { text: "Copy", type: "copy" },
-  txtDownload: { text: "TXT", type: "download" },
-  svgUrl: { text: "SVG", type: "url" },
-  svgDownload: { text: "SVG", type: "download" },
-  pngUrl: { text: "PNG", type: "url" },
-  pngDownload: { text: "PNG", type: "download" },
-}
-
-/**
- * Layout structure for toolbar sections
- * ["group label",["buttonObject"]]
- * @constant {Array<[string, string[]]>}
- */
-export const LAYOUT = [
-  ["Sitemap", ["all", "startHere"]],
-  ["Code", ["copy"]],
-  ["Download", ["txtDownload", "svgDownload", "pngDownload"]],
-  ["URL", ["svgUrl", "pngUrl"]],
-]
-
-/**
  * URLs of required external JavaScript libraries
  * @constant {string[]}
  */
@@ -48,12 +8,6 @@ export const DEPENDENCIES = [
 ];
 
 /**
- * URLs of required external CSS libraries
- * @constant {string[]}
- */
-export const EXTERNALCSS = ["https://matcha.mizu.sh/matcha.css"]
-
-/**
  * Retry variables used in the cloud platform.
  * @constant {Object}
  * @property {number} maxCount - The maximum number of retries.
@@ -61,5 +15,63 @@ export const EXTERNALCSS = ["https://matcha.mizu.sh/matcha.css"]
  */
 export const RETRY = {
   maxTries: 10,
-  interval: 1000
+  interval: 1000,
+};
+
+export const baseCSS = `
+:host {position: fixed;bottom: 2vh;right: 2vw;padding: 10px;z-index: 1000;display: flex;gap: 3ch;}
+.toolbar { visibility: hidden;position: fixed;display: flex;flex-direction: row;bottom: 2vh;right: 2vw;padding: 10px;z-index: 1000;gap: 3ch;}
+.group {display: flex; flex-direction: column; align-items: center; font-size: .875rem; gap: .25rem;}
+.btnContainer {display: flex;gap: .125rem;}
+.close {height: 2rem;width: 2rem;display: flex;align-items: center;justify-content: center;margin: auto 0;padding: 0}
+`;
+export const fallbackCSS = `
+:host {background-color: #f0f0f0;border: 1px solid #ccc;}
+`;
+
+/**
+ * Dynamically loads a script into the document with retry logic
+ * @function loadScript
+ * @param {string} url - The URL of the script to load
+ * @param {number} [retries=3] - Number of retry attempts
+ * @param {number} [delay=1000] - Delay between retries in milliseconds
+ * @returns {Promise<void>}
+ */
+function loadScript(url, retries = 3, delay = 1000) {
+  return new Promise((resolve, reject) => {
+    const attempt = (retryCount) => {
+      const script = document.createElement("script");
+      script.type = "text/javascript";
+      script.src = url;
+      script.onload = () => resolve();
+      script.onerror = () => {
+        if (retryCount < retries) {
+          console.warn(`Failed to load ${url}, retrying...`);
+          setTimeout(() => attempt(retryCount + 1), delay);
+        } else {
+          reject(new Error(`Failed to load script: ${url}`));
+        }
+      };
+
+      document.head.appendChild(script);
+    };
+
+    attempt(0);
+  });
+}
+
+/**
+ * Loads all external dependencies specified in the configuration
+ * @async
+ * @function loadDependencies
+ * @returns {Promise<void>}
+ */
+export async function loadDependencies() {
+  try {
+    const loadPromises = DEPENDENCIES.map((dep) => loadScript(dep));
+    await Promise.all(loadPromises);
+  } catch (error) {
+    console.error("Failed to load dependencies:", error);
+    throw error;
+  }
 }

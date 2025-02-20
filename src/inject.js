@@ -1,5 +1,6 @@
-import { RETRY } from "./config/constants.js";
-import { loadDependencies } from "./utils/dependencies.js";
+"use strict";
+
+import { RETRY, loadDependencies } from "./config/constants.js";
 import { AxureToMermaid } from "./index.js";
 
 /**
@@ -17,7 +18,7 @@ let retryCount = 0;
 async function preInit() {
   while (retryCount < RETRY.maxTries) {
     if (typeof top.$axure !== "undefined" && top.$axure.document) {
-      initialize().catch(console.error);
+      initialize();
       return;
     }
 

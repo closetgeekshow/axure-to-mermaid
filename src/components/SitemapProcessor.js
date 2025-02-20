@@ -3,37 +3,22 @@
  * @description Processes sitemap nodes and generates Mermaid markup
  */
 export class SitemapProcessor {
-  constructor() {
-    // Initialization if needed
-  }
-
-  /**
-   * Processes the sitemap nodes into a structured format
-   * @public
-   * @param {Array} nodes - Array of sitemap nodes
-   * @param {number} [level=1] - Current depth level in the sitemap
-   * @param {string|null} [parentId=null] - ID of the parent node
-   * @param {Array} [result=[]] - Accumulator for processed nodes
-   * @returns {Array} Processed sitemap nodes
-   */
-  processSitemap(nodes, level = 1, parentId = null, result = []) {
-    nodes.forEach((node) => {
-      const nodeId =
-        node.id || `folder_${Math.random().toString(36).substr(2, 7)}`;
-      result.push({
-        id: nodeId,
-        name: node.pageName,
-        level: level,
-        parentId: parentId,
-        type: node.type,
-      });
-
-      if (node.children) {
-        this.processSitemap(node.children, level + 1, nodeId, result);
-      }
+  processSitemap(nodes, level = 1, parentId = null) {
+    return nodes.flatMap(node => {
+      const nodeId = node.id || `folder_${node.pageName}`;
+      return [
+        {
+          id: nodeId,
+          name: node.pageName,
+          level,
+          parentId,
+          type: node.type,
+        },
+        ...(node.children ? this.processSitemap(node.children, level + 1, nodeId) : [])
+      ];
     });
-    return result;
   }
+  
 
   /**
    * Generates Mermaid markup from processed nodes
@@ -45,16 +30,14 @@ export class SitemapProcessor {
     // Initialize an array to hold each line of the Mermaid markup
     const lines = [
       "graph TD",
-      `classDef containers fill:transparent,stroke-width:0`,
-      ``,
+      `classDef containers fill:transparent,stroke-width:0\n`,,
     ];
 
     const maxLevel = Math.max(...nodes.map((n) => n.level));
 
     for (let level = 1; level <= maxLevel; level++) {
       const tierNodes = nodes.filter((n) => n.level === level);
-      lines.push(``); // add an empty line between tiers
-      lines.push(`  subgraph tier${level}[" "]`);
+      lines.push(`\n  subgraph tier${level}[" "]`);
 
       tierNodes.forEach((node) => {
         if (level === 1) {

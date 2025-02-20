@@ -4,7 +4,7 @@ This bookmarklet script allows you to convert [Axure RP](https://axure.com) prot
 
 ## Installation
 
-1. Copy the contents of [`dist/axure-to-mermaid.bundle-processed.js`](dist/axure-to-mermaid.bundle-processed.js)
+1. Copy the contents of [`dist/axure-to-mermaid.bookmarklet.js`](dist/axure-to-mermaid.bundle-processed.js)
 2. Add a bookmark on the bookmark toolbar in Chrome, Firefox or Edge
 3. Paste it as the URL. Double Check that the URL begins with `javascript:`
 

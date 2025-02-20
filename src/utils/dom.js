@@ -1,7 +1,11 @@
 /**
  * @file DOM utility functions for element creation and clipboard operations
  * @module DOMUtils
+ * @requires mermaidStore
  */
+
+import { mermaidStore } from './mermaidUtils.js';
+
 
 /**
  * Creates a new DOM element with specified properties
@@ -11,35 +15,48 @@
  * @param {Object} [props={}] - Additional properties to set on the element
  * @returns {HTMLElement} The created DOM element
  */
-export function createElement(elementType, textContent = '', props = {}) {
-  const element = document.createElement(elementType);
-  element.textContent = textContent;
-
-  for (const [key, value] of Object.entries(props)) {
-    if (key === 'style' && typeof value === 'object') {
-      Object.entries(value).forEach(([styleKey, styleValue]) => {
-        element.style[styleKey] = styleValue;
-      });
-    } 
-    else if (key === 'dataset' && typeof value === 'object') {
-      Object.entries(value).forEach(([dataKey, dataValue]) => {
-        element.dataset[dataKey] = dataValue;
-      });
-    }
-    else {
-      element[key] = value;
-    }
+export function createElement(elementType, textContent = "", props = {}) {
+  if (!elementType) {
+    throw new Error("createElement requires element type");
   }
-  return element;
+
+  try {
+    const element = document.createElement(elementType);
+    element.textContent = textContent;
+
+    Object.entries(props).forEach(([key, value]) => {
+      if (key === "style" && typeof value === "object") {
+        Object.assign(element.style, value);
+      } else if (key === "dataset" && typeof value === "object") {
+        Object.assign(element.dataset, value);
+      } else {
+        element[key] = value;
+      }
+    });
+
+    return element;
+  } catch (error) {
+    console.error(`Failed to create ${elementType} element:`, error);
+    throw error;
+  }
 }
 /**
  * Copies the specified text to the clipboard
  * @function copyToClipboard
  * @param {string} copyText - The text to copy to the clipboard
  */
-export function copyToClipboard(copyText) {
-  
-  navigator.clipboard.writeText(copyText).then(() => {
-    console.log('Raw text copied:', copyText);
-  });
+export function copyToClipboard() {
+  navigator.clipboard
+    .writeText(mermaidStore.getText())
+    .then(() => {
+      notify.success("Copied to clipboard!");
+    })
+    .catch(() => {
+      notify.error("Failed to copy", "error");
+    });
 }
+
+export const notify = {
+  success: (type) => console.log(`Successfully exported ${type} file`),
+  error: (type, error) => console.warn(`Failed to export ${type} file:`, error)
+};

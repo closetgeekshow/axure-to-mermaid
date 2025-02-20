@@ -9,12 +9,9 @@
   "version": "1.0.0",
   "description": "This script is designed to be used with [Axure RP](https://axure.com) (a phenomenal wireframing tool) prototypes to automatically generate Mermaid flowchart diagrams of the sitemap tree.",
   "main": "axure-to-mermaid.js",
-  "devDependencies": {
-    "esbuild": "0.24.2"
-  },
   "scripts": {
-    "bundle": "esbuild src/inject.js --bundle --outfile=./dist/axure-to-mermaid.bundle.js",
-    "bookmarklet": "node process-bookmarklet.js ./dist/axure-to-mermaid.bundle.js",
+    "bundle": "esbuild ./src/inject.js --bundle --outfile=./dist/axure-to-mermaid.bundle.js",
+    "bookmarklet": "node ./build/processBookmarklet.js ./dist/axure-to-mermaid.bundle.js ./dist/axure-to-mermaid.bookmarklet.js",
     "build": "npm run bundle && npm run bookmarklet && npm run size-report",
     "size-report": "ls -lh ./dist | awk 'BEGIN {print \"Size\\tFile\\n----\\t----\"} NR>1 {print $5\"\\t\"$9}' | column -t"
   },

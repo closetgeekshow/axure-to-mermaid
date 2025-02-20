@@ -6,21 +6,24 @@ import { SitemapProcessor } from './components/SitemapProcessor.js';
  * @description Initializes the Axure to Mermaid conversion process
  */
 export class AxureToMermaid {
-  constructor() {
-    this.init();
+  constructor(processor, sitemapArray) {
+    this.processor = processor;
+    this.sitemapArray = sitemapArray;
+    this.toolbar = null;
   }
 
-  /**
-   * Initializes the application by loading dependencies and setting up the toolbar
-   * @private
-   * @async
-   */
-  async init() {
-    // Fix: Pass processor and sitemap array correctly to Toolbar
-    this.toolbar = new Toolbar(
-      new SitemapProcessor(),
-      top.$axure.document.sitemap.rootNodes
-    );
+  static async create() {
+    const processor = new SitemapProcessor();
+    const sitemapArray = top?.$axure?.document?.sitemap?.rootNodes;
+    const instance = new AxureToMermaid(processor, sitemapArray);
+    await instance.init();
+    return instance;
   }
-  
+
+  async init() {
+    this.toolbar = new Toolbar(this.processor, this.sitemapArray);
+  }
 }
+
+// Usage:
+const axureToMermaid = await AxureToMermaid.create();

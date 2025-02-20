@@ -1,8 +1,9 @@
 /**
  * @file Toolbar component for managing sitemap visualization controls
  * @module Toolbar
- * @requires BUTTONS
- * @requires LAYOUT
+ * @requires buttonConfig
+ * @requires baseCSS
+ * @requires fallbackCSS
  * @requires createElement
  * @requires copyToClipboard
  * @requires handleTxtExport
@@ -10,181 +11,154 @@
  * @requires handlePngExport
  */
 
-import { BUTTONS, LAYOUT, EXTERNALCSS } from "../config/constants.js";
+import { buttonConfig } from "../config/buttonConfig.js";
+import { baseCSS, fallbackCSS } from "../config/constants.js";
 import { createElement, copyToClipboard } from "../utils/dom.js";
-import {
-  handleTxtExport,
-  handleSvgExport,
-  handlePngExport,
-} from "../utils/exportHandlers.js";
+import { asFile, mermaidStore } from "../utils/mermaidUtils.js";
+
 
 /**
  * @class Toolbar
  * @description Creates and manages the UI toolbar for sitemap visualization controls
  */
 export class Toolbar {
-  /**
-   * @constructor
-   * @param {SitemapProcessor} processor - Instance of SitemapProcessor
-   * @param {Array} sitemapArray - Array of sitemap nodes
-   */
+  #actionHandlers = {
+    handleAll: () => this.handleAllClick(),
+    handleStartHere: () => this.handleStartHereClick(),
+    handleCopy: () => copyToClipboard(),
+    handleTxtDownload: () => asFile.txt(),
+    handleSvgDownload: () => asFile.svg(true),
+    handlePngDownload: () => asFile.png(true),
+    handleSvgUrl: () => asFile.svg(),
+    handlePngUrl: () => asFile.png(),
+  };
+
+  // Declare private field at class level
+  #buttons = new Map();
+
   constructor(processor, sitemapArray) {
     this.processor = processor;
     this.sitemapArray = sitemapArray;
     this.currentMermaidText = "";
 
-    // Create base container
     this.container = createElement("div", "", {
-      id: "toolbar",
-      className: "xaxToolbar"
+      id: "xaxGeneric",
     });
 
-    // Create shadow root
     this.shadow = this.container.attachShadow({ mode: "open" });
+    this.loadCSSInShadow("https://matcha.mizu.sh/matcha.css");
 
-    // Load external CSS into shadow DOM
-    for (const css of EXTERNALCSS) {
-      this.loadCSSInShadow(css);
-    }
-
-    // Create toolbar within shadow DOM
     this.toolbar = createElement("div", "", {
-      className: "bd-default bg-muted",
-      style: {
-        position: "fixed",
-        display: "flex",
-        flexDirection: "row",
-        bottom: "2vh",
-        right: "2vw",
-        padding: "10px",
-        zIndex: "1000",
-        gap: "3ch",
-      },
+      className: "toolbar bd-default bg-muted",
     });
 
-    this.buttons = this.createButtons();
-    this.attachButtons();
+    this.toolbar.appendChild(this.createButtons());
     this.shadow.appendChild(this.toolbar);
     document.body.appendChild(this.container);
   }
 
-  loadCSSInShadow = (url) => {
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
+  loadCSSInShadow(url) {
+    // Always add base styles
+    const baseStyle = document.createElement("style");
+    baseStyle.textContent = baseCSS;
+    this.shadow.appendChild(baseStyle);
+
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
     link.href = url;
     link.onload = () => {
-      console.log('CSS loaded, rendering toolbar');
-      this.toolbar.style.visibility = 'visible'; // Show toolbar after CSS loads
+      this.toolbar.style.visibility = "visible"; // Show toolbar after CSS loads
     };
     link.onerror = () => {
-      console.error('Failed to load CSS, using fallback styles');
-      const fallbackCSS = `
-        .xaxToolbar {
-          position: fixed;
-          bottom: 2vh;
-          right: 2vw;
-          padding: 10px;
-          z-index: 1000;
-          display: flex;
-          gap: 3ch;
-          background-color: #f0f0f0; /* Fallback color */
-          border: 1px solid #ccc; /* Fallback border */
-        }
-      `;
+      console.error("Failed to load CSS, using fallback styles");
 
-      const fallbackStyle = document.createElement('style');
+      const fallbackStyle = document.createElement("style");
       fallbackStyle.textContent = fallbackCSS;
       this.shadow.appendChild(fallbackStyle);
-      this.shadow.appendChild(fallbackStyle); // Use fallback styles
     };
     this.shadow.appendChild(link);
-  };
+  }
 
-  /**
-   * @private
-   * @method createButtons
-   * @returns {Object.<string, HTMLButtonElement>} Map of button keys to button elements
-   */
   createButtons() {
-    return Object.entries(BUTTONS).reduce((buttons, [key, config]) => {
-      buttons[key] = createElement("button", `${config.text}`, {
-        disabled: config.type !== "generate",
-        dataset: {
-          buttonType: config.type,
-        },
-        onclick: () => this.handleButtonClick(key, config.type),
+    const fragment = document.createDocumentFragment();
+
+    buttonConfig.groups.forEach((group) => {
+      const groupEl = createElement("div", "", {
+        className: "group",
       });
-      buttons[key].classList.add("fg-muted");
-      return buttons;
-    }, {});
+      groupEl.appendChild(createElement("span", group.label));
+
+      const buttonContainer = createElement("div", "", {
+        className: "btnContainer",
+      });
+
+      group.buttons.forEach((button) => {
+        const buttonEl = createElement("button", button.text, {
+          disabled: group.type !== "generate",
+          dataset: {
+            buttonType: group.type,
+          },
+          onclick: () => this.#actionHandlers[button.action](),
+        });
+        buttonEl.classList.add("fg-muted");
+
+        // Store button reference
+        this.#buttons.set(button.action, buttonEl);
+
+        buttonContainer.appendChild(buttonEl);
+      });
+
+      groupEl.appendChild(buttonContainer);
+      fragment.appendChild(groupEl);
+    });
+
+    const closeButton = createElement("button", "×", {
+      className: "close fg-muted",
+      onclick: () => this.unload(),
+    });
+    fragment.appendChild(closeButton);
+
+    return fragment;
+  }
+
+  enableExportButtons() {
+    // Update to use Map
+    for (const [_, button] of this.#buttons) {
+      if (button.dataset.buttonType !== "generate") {
+        button.disabled = false;
+      }
+    }
   }
 
   /**
-   * @private
-   * @method handleButtonClick
-   * @param {string} key - Button identifier
-   * @param {string} type - Button type (generate|copy|download|url)
-   */
-  handleButtonClick(key, type) {
-    const handlers = {
-      generate: {
-        all: () => this.handleAllClick(),
-        startHere: () => this.handleStartHereClick(),
-      },
-      copy: {
-        copy: () => {
-          console.log(this.currentMermaidText);
-          copyToClipboard(this.currentMermaidText);
-        },
-      },
-      download: {
-        txtDownload: () => handleTxtExport(this.currentMermaidText),
-        svgDownload: () => handleSvgExport(this.currentMermaidText, true),
-        pngDownload: () => handlePngExport(this.currentMermaidText, true),
-      },
-      url: {
-        svgUrl: () => handleSvgExport(this.currentMermaidText),
-        pngUrl: () => handlePngExport(this.currentMermaidText),
-      },
-    };
-
-    handlers[type]?.[key]?.();
-  }
-
-  /**
-   * @public
-   * @method handleAllClick
-   * @description Processes complete sitemap and generates Mermaid markup
-   */
+    * @public
+    * @method handleAllClick
+    * @description Processes complete sitemap and generates Mermaid markup
+    */
   handleAllClick() {
     const processedNodes = this.processor.processSitemap(this.sitemapArray);
-    this.currentMermaidText =
-      this.processor.generateMermaidMarkup(processedNodes);
-
-    copyToClipboard(this.currentMermaidText);
+    mermaidStore.setText(this.processor.generateMermaidMarkup(processedNodes));
     this.enableExportButtons();
   }
+
   /**
-   * @public
-   * @method handleStartHereClick
-   * @description Processes sitemap from current node and generates Mermaid markup
-   */
+    * @public
+    * @method handleStartHereClick
+    * @description Processes sitemap from current node and generates Mermaid markup
+    */
   handleStartHereClick() {
-    let currentId = top.$axure.page.shortId;
+    let currentId = top?.$axure?.page?.shortId;
 
     if (!currentId) {
-      // Access the query string from the parent window
-      const parentUrlParams = new URLSearchParams(
-        window.parent.location.search
-      );
+      // Access the query string from the top window
+      const parentUrlParams = new URLSearchParams(top.location.search);
       currentId = parentUrlParams.get("id");
     }
 
     if (!currentId) {
       // Deep search in $axure.document.sitemap.rootNodes
-      const pageParam = new URLSearchParams(window.parent.location.search).get(
-        "p"
-      );
+      const pageParam = new URLSearchParams(top.location.search).get("p");
+
       if (pageParam) {
         const findNodeByUrl = (nodes) => {
           for (const node of nodes) {
@@ -211,26 +185,12 @@ export class Toolbar {
       );
       if (selectedNode) {
         const processedNodes = this.processor.processSitemap([selectedNode]);
-        this.currentMermaidText =
-          this.processor.generateMermaidMarkup(processedNodes);
-        copyToClipboard(this.currentMermaidText);
+        mermaidStore.setText(this.processor.generateMermaidMarkup(processedNodes));
+
         this.enableExportButtons();
       }
     }
   }
-  /**
-   * @public
-   * @method enableExportButtons
-   * @description Enables all non-generate buttons after markup generation
-   */
-  enableExportButtons() {
-    Object.values(this.buttons).forEach((button) => {
-      if (button.dataset.buttonType !== "generate") {
-        button.disabled = false;
-      }
-    });
-  }
-
   /**
    * @public
    * @method unload
@@ -238,57 +198,5 @@ export class Toolbar {
    */
   unload() {
     this.toolbar?.parentNode?.removeChild(this.toolbar);
-  }
-
-  attachButtons() {
-    LAYOUT.forEach(([label, buttonKeys]) => {
-      // Create group container
-      const group = createElement("div", "", {
-        style: {
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          fontSize: ".875rem",
-          gap: ".25rem",
-        },
-      });
-
-      // Add label
-      const labelElement = createElement("span", label);
-      group.appendChild(labelElement);
-
-      // Add button container
-      const buttonContainer = createElement("div", "", {
-        style: {
-          display: "flex",
-          gap: ".125rem",
-        },
-      });
-
-      // Add buttons
-      buttonKeys.forEach((key) => {
-        buttonContainer.appendChild(this.buttons[key]);
-      });
-
-      group.appendChild(buttonContainer);
-      this.toolbar.appendChild(group);
-    });
-
-    // Create and append close button last
-    const closeButton = createElement("button", "X", {
-      className: "fg-muted",
-      style: {
-        height: "2rem",
-        width: "2rem",
-        display: "flex",
-        alignItems: "center", // Vertical center
-        justifyContent: "center", // Horizontal center
-        margin: "auto 0",
-        padding: "0",
-      },
-      onclick: () => this.unload(),
-    });
-
-    this.toolbar.appendChild(closeButton);
   }
 }
