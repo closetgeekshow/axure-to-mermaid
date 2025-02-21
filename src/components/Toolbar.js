@@ -1,17 +1,4 @@
-/**
- * @file Toolbar component for managing sitemap visualization controls
- * @module Toolbar
- * @requires buttonConfig
- * @requires baseCSS
- * @requires fallbackCSS
- * @requires createElement
- * @requires copyToClipboard
- * @requires handleTxtExport
- * @requires handleSvgExport
- * @requires handlePngExport
- */
-
-import { buttonConfig } from "../config/buttonConfig.js";
+import { buttonConfig, closeIcon } from "../config/buttonConfig.js";
 import { baseCSS, fallbackCSS } from "../config/constants.js";
 import { createElement, copyToClipboard } from "../utils/dom.js";
 import { asFile, mermaidStore } from "../utils/mermaidUtils.js";
@@ -93,14 +80,35 @@ export class Toolbar {
       });
 
       group.buttons.forEach((button) => {
-        const buttonEl = createElement("button", button.text, {
+        // Create button with empty text content initially
+        const buttonEl = createElement("button", "", {
           disabled: group.type !== "generate",
           dataset: {
             buttonType: group.type,
           },
           onclick: () => this.#actionHandlers[button.action](),
+          // Add aria-label for accessibility
+          ariaLabel: button.text,
         });
         buttonEl.classList.add("fg-muted");
+
+        // Create icon container
+        const iconContainer = createElement("span", "", {
+          className: "icon-container",
+        });
+
+        // Add each icon from the button config
+        button.icons.forEach(iconUrl => {
+          const iconEl = createElement("img", "", {
+            src: iconUrl,
+            alt: "",  // Empty alt since we have aria-label on button
+            className: "button-icon",
+          });
+          iconContainer.appendChild(iconEl);
+        });
+
+        // Add icon container to button
+        buttonEl.appendChild(iconContainer);
 
         // Store button reference
         this.#buttons.set(button.action, buttonEl);
@@ -112,10 +120,24 @@ export class Toolbar {
       fragment.appendChild(groupEl);
     });
 
-    const closeButton = createElement("button", "×", {
+ 
+    const iconContainer = createElement("span", "", {
+      className: "icon-container"
+    })
+    const closeButton = createElement("button", "", {
       className: "close fg-muted",
       onclick: () => this.unload(),
+      ariaLabel: "Close toolbar",
     });
+    // Add close icon
+    const iconEl = createElement("img", "", {
+      src: closeIcon,
+      alt: "",
+      className: "button-icon",
+    });
+
+    iconContainer.appendChild(iconEl);
+    closeButton.appendChild(iconContainer);
     fragment.appendChild(closeButton);
 
     return fragment;

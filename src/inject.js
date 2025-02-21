@@ -39,11 +39,3 @@ async function waitForAxureDocument(timeout = 10000) {
   return Promise.race([observerPromise, timeoutPromise]);
 }
 
-async function preInit() {
-  try {
-    await waitForAxureDocument();
-    initialize();
-  } catch (error) {
-    console.error(error.message);
-  }
-}

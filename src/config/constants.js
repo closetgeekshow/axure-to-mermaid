@@ -8,11 +8,24 @@ export const DEPENDENCIES = [
 ];
 
 export const baseCSS = `
-:host {position: fixed;bottom: 2vh;right: 2vw;padding: 10px;z-index: 1000;display: flex;gap: 3ch;}
-.toolbar { visibility: hidden;position: fixed;display: flex;flex-direction: row;bottom: 2vh;right: 2vw;padding: 10px;z-index: 1000;gap: 3ch;}
-.group {display: flex; flex-direction: column; align-items: center; font-size: .875rem; gap: .25rem;}
-.btnContainer {display: flex;gap: .125rem;}
-.close {height: 2rem;width: 2rem;display: flex;align-items: center;justify-content: center;margin: auto 0;padding: 0}
+.toolbar { visibility: hidden;position: fixed;display: flex;flex-direction: row;bottom: 1rem;right:1rem;padding:.625rem;z-index: 1000;gap:.5rem}
+.group {
+  display: flex; 
+  align-items: center;
+  font-size: .875rem;
+  border-right: 1px solid rgba(0,0,0,0.8);
+  padding-right: .5rem;
+}
+.group:last-child {
+  border-right: none;
+  padding-right: 0;
+}
+.group > span {display:none}
+.btnContainer {display: flex;align-item:center;gap:.125rem}
+.close {height: 1.5rem;width: 1.5rem;display: flex;align-items: center;justify-content: center;margin: auto 0;padding: 0}
+.button-icon {width:1.5rem;height:1.5rem;vertical-align:middle;}
+.icon-container {display:flex;gap:.25rem;align-items:center;}
+button {display:inline-flex;align-items:center;justify-content:center;padding:.375rem;min-height:2rem}
 `;
 export const fallbackCSS = `
 :host {background-color: #f0f0f0;border: 1px solid #ccc;}
