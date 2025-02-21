@@ -61,8 +61,14 @@ All dependency scripts are injected from CDN sources to keep bookmarklet at a re
 
 ## Future Ideas
 * Make it work with the Mermaid JS library instead of Mermaid.Ink. I have mermaid chart generation working in a privste plugin for myself, I wanted to try to make it work with Mermaid.Ink this time. 
-* Convert Axure Flowcharts to mermaid (this actually looks pretty easy)
+* Convert Axure Flowcharts to mermaid (this actually looks pretty easy or at least not super hard)
 * Label the Mermaid.Ink buttons better or include a warning modal the first time you click one
+* styling based on name, hierarchy position, etc.
+* annotate the source URL on diagram
+* Start From Parent Folder generation method
+* configuration options
+* responsive toolbar
+* 
  
 ## Contact
 Bluesky: [@closetgeekshow.ca](https://bsky.app/profile/closetgeekshow.ca) | Mastodon: [@closetgeekshow@c.im](https://c.im/@Closetgeekshow) | Email: [closetgeekshow@gmail.com](mailto:closetgeekshow@gmail.com)
