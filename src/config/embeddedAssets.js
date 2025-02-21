@@ -1,0 +1,1 @@
+export const embeddedAssets = {"toolbar.css":"","fallback.css":""};

@@ -3,6 +3,7 @@
  * @description Processes sitemap nodes and generates Mermaid markup
  */
 export class SitemapProcessor {
+  #nodeCache = new Map();
   #processedNodes = null;
   #nodeMap = new Map();
 
@@ -12,9 +13,19 @@ export class SitemapProcessor {
    * @returns {Array} Processed nodes
    */
   initialize(nodes) {
+    if (this.#processedNodes) {
+      return this.#processedNodes;
+    }
     this.#processedNodes = this.processSitemap(nodes);
-    this.#processedNodes.forEach(node => this.#nodeMap.set(node.id, node));
+    this.#processedNodes.forEach(node => {
+      this.#nodeCache.set(node.id, node);
+      this.#nodeMap.set(node.id, node);
+    });
     return this.#processedNodes;
+  }
+
+  getNode(id) {
+    return this.#nodeCache.get(id);
   }
 
   /**

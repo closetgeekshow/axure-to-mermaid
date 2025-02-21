@@ -3,7 +3,6 @@ import { baseCSS, fallbackCSS } from "../config/constants.js";
 import { createElement, copyToClipboard } from "../utils/dom.js";
 import { asFile, mermaidStore } from "../utils/mermaidUtils.js";
 
-
 /**
  * @class Toolbar
  * @description Creates and manages the UI toolbar for sitemap visualization controls
@@ -19,8 +18,9 @@ export class Toolbar {
     handleSvgUrl: async () => await asFile.svg(),
     handlePngUrl: async () => await asFile.png(),
   };
-  // Declare private field at class level
-  #buttons = new Map();
+
+    // Declare private field at class level
+    #buttons = new Map();
 
   constructor(processor, sitemapArray) {
     this.processor = processor;
@@ -41,6 +41,40 @@ export class Toolbar {
     this.toolbar.appendChild(this.createButtons());
     this.shadow.appendChild(this.toolbar);
     document.body.appendChild(this.container);
+
+    // Single event listener for all buttons
+    this.toolbar.addEventListener('click', (e) => this.handleToolbarClick(e));
+  }
+
+  handleToolbarClick(event) {
+    const button = event.target.closest('button');
+    if (!button) return;
+
+    const action = button.dataset.action;
+    if (action && this.#actionHandlers[action]) {
+      this.#actionHandlers[action]();
+    }
+  }
+
+  /**
+   * Generates a complete sitemap diagram
+   * @returns {void}
+   */
+  generateFullSitemap() {
+    const diagram = this.processor.generateMermaidMarkup();
+    this.mermaidStore.setText(diagram);
+    this.enableExportButtons();
+  }
+
+  /**
+   * Generates a subtree diagram starting from selected node
+   * @param {string} nodeId - Starting node identifier
+   * @returns {void}
+   */
+  generateSubtreeSitemap(nodeId) {
+    const diagram = this.processor.generatePartialMarkup(nodeId);
+    this.mermaidStore.setText(diagram);
+    this.enableExportButtons();
   }
 
   loadCSSInShadow(url) {
@@ -97,10 +131,10 @@ export class Toolbar {
         });
 
         // Add each icon from the button config
-        button.icons.forEach(iconUrl => {
+        button.icons.forEach((iconUrl) => {
           const iconEl = createElement("img", "", {
             src: iconUrl,
-            alt: "",  // Empty alt since we have aria-label on button
+            alt: "", // Empty alt since we have aria-label on button
             className: "button-icon",
           });
           iconContainer.appendChild(iconEl);
@@ -119,10 +153,9 @@ export class Toolbar {
       fragment.appendChild(groupEl);
     });
 
- 
     const iconContainer = createElement("span", "", {
-      className: "icon-container"
-    })
+      className: "icon-container",
+    });
     const closeButton = createElement("button", "", {
       className: "close fg-muted",
       onclick: () => this.unload(),
@@ -152,10 +185,10 @@ export class Toolbar {
   }
 
   /**
-    * @public
-    * @method handleAllClick
-    * @description Processes complete sitemap and generates Mermaid markup
-    */
+   * @public
+   * @method handleAllClick
+   * @description Processes complete sitemap and generates Mermaid markup
+   */
   handleAllClick() {
     // No need to reprocess, just generate markup
     mermaidStore.setText(this.processor.generateMermaidMarkup());
@@ -163,10 +196,10 @@ export class Toolbar {
   }
 
   /**
-    * @public
-    * @method handleStartHereClick
-    * @description Processes sitemap from current node and generates Mermaid markup
-    */
+   * @public
+   * @method handleStartHereClick
+   * @description Processes sitemap from current node and generates Mermaid markup
+   */
   handleStartHereClick() {
     const currentId = this.getCurrentNodeId();
     if (currentId) {
