@@ -12,8 +12,7 @@
  */
 
 import { notify } from "./dom.js";
-
-/**
+ /**
  * Serializes Mermaid text into a compressed format suitable for URL encoding with Mermaid.ink
  * @function serializeMermaid
  * @param {string} mermaidText - The Mermaid diagram text
@@ -24,16 +23,24 @@ import { notify } from "./dom.js";
  * 3. Compressing with Pako deflate algorithm
  * 4. Encoding the compressed data as Base64
  * The resulting string can be used in Mermaid.ink URLs to render diagrams
- */ export function serializeMermaid(mermaidText) {
+ */ 
+import { loadDependencies } from "../config/constants.js";
+
+let dependenciesLoaded = false;
+
+async function ensureDependencies() {
+  if (!dependenciesLoaded) {
+    await loadDependencies();
+    dependenciesLoaded = true;
+  }
+}
+
+export async function serializeMermaid(mermaidText) {
+  await ensureDependencies();
+  
   const state = {
     code: mermaidText,
-    mermaid: JSON.stringify(
-      {
-        theme: "default",
-      },
-      null,
-      2
-    ),
+    mermaid: JSON.stringify({ theme: "default" }, null, 2),
     updateEditor: true,
     autoSync: true,
     updateDiagram: true,
@@ -61,17 +68,15 @@ import { notify } from "./dom.js";
 
 async function handleExport(type, format, download) {
   try {
-    const encoded = serializeMermaid(mermaidStore.getText());
+    const encoded = await serializeMermaid(mermaidStore.getText());
     const baseUrl = `https://mermaid.ink/${format}/pako:${encoded}`;
     const url = format === "img" ? `${baseUrl}?type=${type}` : baseUrl;
 
     if (download) {
       const response = await fetch(url);
-      if (!response.ok)
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
-      const content =
-        type === "svg" ? await response.text() : await response.blob();
+      const content = type === "svg" ? await response.text() : await response.blob();
       await downloadFile(content, `sitemap.${type}`, `image/${type}`);
       notify.success(type);
     } else {
@@ -103,6 +108,12 @@ async function handleTxtExport() {
  * Downloads a file with the specified content and type
  * @function downloadFile
  * @param {Blob|string} content - The content to download
+
+export const asFile = {
+  svg: async (download = false) => handleExport("svg", "svg", download),
+  png: async (download = false) => handleExport("png", "img", download),
+  txt: handleTxtExport,
+};
  * @param {string} filename - The name of the file to save
  * @param {string} type - The MIME type of the file
  * @returns {Promise} A promise that resolves when the download is complete

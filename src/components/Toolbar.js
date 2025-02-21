@@ -14,12 +14,11 @@ export class Toolbar {
     handleStartHere: () => this.handleStartHereClick(),
     handleCopy: () => copyToClipboard(),
     handleTxtDownload: () => asFile.txt(),
-    handleSvgDownload: () => asFile.svg(true),
-    handlePngDownload: () => asFile.png(true),
-    handleSvgUrl: () => asFile.svg(),
-    handlePngUrl: () => asFile.png(),
+    handleSvgDownload: async () => await asFile.svg(true),
+    handlePngDownload: async () => await asFile.png(true),
+    handleSvgUrl: async () => await asFile.svg(),
+    handlePngUrl: async () => await asFile.png(),
   };
-
   // Declare private field at class level
   #buttons = new Map();
 
@@ -158,8 +157,8 @@ export class Toolbar {
     * @description Processes complete sitemap and generates Mermaid markup
     */
   handleAllClick() {
-    const processedNodes = this.processor.processSitemap(this.sitemapArray);
-    mermaidStore.setText(this.processor.generateMermaidMarkup(processedNodes));
+    // No need to reprocess, just generate markup
+    mermaidStore.setText(this.processor.generateMermaidMarkup());
     this.enableExportButtons();
   }
 
@@ -169,6 +168,15 @@ export class Toolbar {
     * @description Processes sitemap from current node and generates Mermaid markup
     */
   handleStartHereClick() {
+    const currentId = this.getCurrentNodeId();
+    if (currentId) {
+      // Generate markup for subtree using stored nodes
+      mermaidStore.setText(this.processor.generateMermaidMarkup(currentId));
+      this.enableExportButtons();
+    }
+  }
+
+  getCurrentNodeId() {
     let currentId = top?.$axure?.page?.shortId;
 
     if (!currentId) {
@@ -200,18 +208,7 @@ export class Toolbar {
       }
     }
 
-    if (currentId) {
-      const selectedNode = this.processor.findCurrentNode(
-        this.sitemapArray,
-        currentId
-      );
-      if (selectedNode) {
-        const processedNodes = this.processor.processSitemap([selectedNode]);
-        mermaidStore.setText(this.processor.generateMermaidMarkup(processedNodes));
-
-        this.enableExportButtons();
-      }
-    }
+    return currentId;
   }
   /**
    * @public

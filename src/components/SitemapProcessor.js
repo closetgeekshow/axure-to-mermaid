@@ -3,81 +3,107 @@
  * @description Processes sitemap nodes and generates Mermaid markup
  */
 export class SitemapProcessor {
-  processSitemap(nodes, level = 1, parentId = null) {
+  #processedNodes = null;
+  #nodeMap = new Map();
+
+  /**
+   * Initializes the processor with sitemap nodes
+   * @param {Array} nodes - Array of sitemap nodes
+   * @returns {Array} Processed nodes
+   */
+  initialize(nodes) {
+    this.#processedNodes = this.processSitemap(nodes);
+    this.#processedNodes.forEach(node => this.#nodeMap.set(node.id, node));
+    return this.#processedNodes;
+  }
+
+  /**
+   * Processes sitemap nodes into flat structure
+   * @param {Array} nodes - Array of sitemap nodes
+   * @param {string} parentId - Parent node ID
+   * @returns {Array} Processed nodes
+   */
+  processSitemap(nodes, parentId = null) {
     return nodes.flatMap(node => {
-      const nodeId = node.id || `folder_${node.pageName}`;
+      const id = node.id || `f${(parentId || node.pageName).split('').reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 0)}`;
       return [
-        {
-          id: nodeId,
-          name: node.pageName,
-          level,
-          parentId,
-          type: node.type,
-        },
-        ...(node.children ? this.processSitemap(node.children, level + 1, nodeId) : [])
+        { id, name: node.pageName, parentId, type: node.type },
+        ...(node.children ? this.processSitemap(node.children, id) : [])
       ];
     });
   }
-  
 
   /**
    * Generates Mermaid markup from processed nodes
-   * @public
-   * @param {Array} nodes - Array of processed sitemap nodes
+   * @param {string} startNodeId - Optional starting node ID for subtree
    * @returns {string} Mermaid markup text
    */
-  generateMermaidMarkup(nodes) {
-    // Initialize an array to hold each line of the Mermaid markup
-    const lines = [
-      "graph TD",
-      `classDef containers fill:transparent,stroke-width:0\n`,,
-    ];
-
-    const maxLevel = Math.max(...nodes.map((n) => n.level));
-
-    for (let level = 1; level <= maxLevel; level++) {
-      const tierNodes = nodes.filter((n) => n.level === level);
-      lines.push(`\n  subgraph tier${level}[" "]`);
-
-      tierNodes.forEach((node) => {
-        if (level === 1) {
-          lines.push(`    ${node.id}["${node.name}"]`);
-        } else {
-          lines.push(`    ${node.parentId} --- ${node.id}["${node.name}"]`);
-        }
-      });
-
-      lines.push(`  end`, ``);
+  generateMermaidMarkup(startNodeId = null) {
+    if (!this.#processedNodes) {
+      throw new Error('Sitemap not initialized. Call initialize() first.');
     }
 
-    lines.push(``); // add an empty line before style assignments
-    lines.push(
-      `  class ${Array.from(
-        { length: maxLevel },
-        (_, i) => `tier${i + 1}`
-      ).join(",")} containers`
+    const relevantNodes = startNodeId 
+      ? this.#getSubtreeNodes(startNodeId)
+      : this.#processedNodes;
+
+    return this.#generateMarkup(relevantNodes);
+  }
+
+  /**
+   * Gets nodes in subtree starting from given node
+   * @private
+   */
+  #getSubtreeNodes(startNodeId) {
+    const startNode = this.#nodeMap.get(startNodeId);
+    return this.#processedNodes.filter(node => 
+      this.#isNodeInSubtree(node, startNode)
     );
+  }
 
-    // Join the lines with '\n' to form the final Mermaid markup string
-    const mermaidText = lines.join('\n');
+  /**
+   * Checks if node is in subtree
+   * @private
+   */
+  #isNodeInSubtree(node, startNode) {
+    let current = node;
+    while (current) {
+      if (current.id === startNode.id) return true;
+      current = this.#nodeMap.get(current.parentId);
+    }
+    return false;
+  }
 
-    return mermaidText;
+  /**
+   * Generates the actual Mermaid markup
+   * @private
+   */
+  #generateMarkup(nodes) {
+    const groups = nodes.reduce((acc, node) => {
+      const tier = acc.get(node.parentId) || new Set();
+      tier.add(`${node.id}["${node.name}"]${node.parentId ? `\n      ${node.parentId} --- ${node.id}` : ''}`);
+      acc.set(node.parentId, tier);
+      return acc;
+    }, new Map());
+
+    return [
+      'graph TD',
+      '',
+      '  classDef containers fill:transparent,stroke-width:0',
+      '',
+      ...[...groups.entries()].map(([parent, nodes], i) => 
+        `  subgraph tier${i}[" "]\n      ${[...nodes].join('\n      ')}\n  end\n\n`
+      ),
+      `  class ${[...Array(groups.size)].map((_, i) => `tier${i}`).join(',')} containers`
+    ].join('\n');
   }
   /**
    * Finds the current node in the sitemap
    * @public
-   * @param {Array} nodes - Array of sitemap nodes
    * @param {string} currentId - ID of the current node
    * @returns {Object|null} The found node or null if not found
    */
-  findCurrentNode(nodes, currentId) {
-    for (const node of nodes) {
-      if (node.id === currentId) return node;
-      if (node.children) {
-        const found = this.findCurrentNode(node.children, currentId);
-        if (found) return found;
-      }
-    }
-    return null;
+  findCurrentNode(currentId) {
+    return this.#nodeMap.get(currentId) || null;
   }
 }

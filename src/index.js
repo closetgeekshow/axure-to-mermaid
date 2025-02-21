@@ -10,6 +10,7 @@ export class AxureToMermaid {
     this.processor = processor;
     this.sitemapArray = sitemapArray;
     this.toolbar = null;
+    this.processedNodes = null; // Store processed nodes
   }
 
   static async create() {
@@ -21,9 +22,10 @@ export class AxureToMermaid {
   }
 
   async init() {
-    this.toolbar = new Toolbar(this.processor, this.sitemapArray);
+    // Process nodes once during initialization
+    this.processedNodes = this.processor.initialize(this.sitemapArray);
+    this.toolbar = new Toolbar(this.processor, this.sitemapArray, this.processedNodes);
   }
 }
-
 // Usage:
 const axureToMermaid = await AxureToMermaid.create();
