@@ -12,7 +12,7 @@
  */
 
 import { notify } from "./dom.js";
- /**
+/**
  * Serializes Mermaid text into a compressed format suitable for URL encoding with Mermaid.ink
  * @function serializeMermaid
  * @param {string} mermaidText - The Mermaid diagram text
@@ -23,7 +23,7 @@ import { notify } from "./dom.js";
  * 3. Compressing with Pako deflate algorithm
  * 4. Encoding the compressed data as Base64
  * The resulting string can be used in Mermaid.ink URLs to render diagrams
- */ 
+ */
 import { loadDependencies } from "../config/constants.js";
 
 let dependenciesLoaded = false;
@@ -37,7 +37,7 @@ async function ensureDependencies() {
 
 export async function serializeMermaid(mermaidText) {
   await ensureDependencies();
-  
+
   const state = {
     code: mermaidText,
     mermaid: JSON.stringify({ theme: "default" }, null, 2),
@@ -74,9 +74,11 @@ async function handleExport(type, format, download) {
 
     if (download) {
       const response = await fetch(url);
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok)
+        throw new Error(`HTTP error! status: ${response.status}`);
 
-      const content = type === "svg" ? await response.text() : await response.blob();
+      const content =
+        type === "svg" ? await response.text() : await response.blob();
       await downloadFile(content, `sitemap.${type}`, `image/${type}`);
       notify.success(type);
     } else {
@@ -104,16 +106,16 @@ async function handleTxtExport() {
   }
 }
 
-/**
- * Downloads a file with the specified content and type
- * @function downloadFile
- * @param {Blob|string} content - The content to download
-
 export const asFile = {
   svg: async (download = false) => handleExport("svg", "svg", download),
   png: async (download = false) => handleExport("png", "img", download),
   txt: handleTxtExport,
 };
+
+/**
+ * Downloads a file with the specified content and type
+ * @function downloadFile
+ * @param {Blob|string} content - The content to download
  * @param {string} filename - The name of the file to save
  * @param {string} type - The MIME type of the file
  * @returns {Promise} A promise that resolves when the download is complete
@@ -127,9 +129,7 @@ function downloadFile(content, filename, type) {
 
       a.href = url;
       a.download = filename;
-      document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
       resolve();
@@ -139,21 +139,15 @@ function downloadFile(content, filename, type) {
   });
 }
 
-// Create a simple store for mermaid text
+// Change from factory function to singleton instance
 export const mermaidStore = (() => {
-  let currentText = '';
+  let currentText = "";
   return {
-  setText(text) {
-    currentText = text;
-  },
-  getText() {
-    return currentText;
-  }
-};
+    setText(text) {
+      currentText = text;
+    },
+    getText() {
+      return currentText;
+    },
+  };
 })();
-
-export const asFile = {
-  svg: handleSvgExport,
-  png: handlePngExport,
-  txt: handleTxtExport,
-};

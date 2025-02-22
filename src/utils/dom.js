@@ -15,10 +15,6 @@ import { mermaidStore } from "./mermaidUtils.js";
  * @returns {HTMLElement} The created DOM element
  */
 export function createElement(elementType, textContent = "", props = {}) {
-  if (!elementType) {
-    throw new Error("createElement requires element type");
-  }
-
   try {
     const element = document.createElement(elementType);
     element.textContent = textContent;
