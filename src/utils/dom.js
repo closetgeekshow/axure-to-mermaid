@@ -4,8 +4,7 @@
  * @requires mermaidStore
  */
 
-import { mermaidStore } from './mermaidUtils.js';
-
+import { mermaidStore } from "./mermaidUtils.js";
 
 /**
  * Creates a new DOM element with specified properties
@@ -40,6 +39,17 @@ export function createElement(elementType, textContent = "", props = {}) {
     throw error;
   }
 }
+
+export function createIconEl(url, alt="", className="") {
+  createElement("object", "", {
+    data: url,
+    ariaLabel: alt,
+    className: className,
+    type: "image/svg+xml",
+    role: "img",
+  });
+}
+
 /**
  * Copies the specified text to the clipboard
  * @function copyToClipboard
@@ -58,5 +68,5 @@ export function copyToClipboard() {
 
 export const notify = {
   success: (type) => console.log(`Successfully exported ${type} file`),
-  error: (type, error) => console.warn(`Failed to export ${type} file:`, error)
+  error: (type, error) => console.warn(`Failed to export ${type} file:`, error),
 };

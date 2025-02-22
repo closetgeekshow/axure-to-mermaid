@@ -2,12 +2,15 @@
  * URLs of required external JavaScript libraries
  * @constant {string[]}
  */
+export const CDN = "https://cdn.jsdelivr.net/npm/"
+
 export const DEPENDENCIES = [
-  "https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js",
-  "https://cdn.jsdelivr.net/npm/js-base64@3.7.5/base64.min.js",
+  "pako@2.1.0/dist/pako.min.js",
+  "js-base64@3.7.5/base64.js",
 ];
 
 export const baseCSS = `
+svg path[fill="currentColor"] {fill:#fff}
 .toolbar { visibility: hidden;position: fixed;display: flex;flex-direction: row;bottom: 1rem;right:1rem;padding:.625rem;z-index: 1000;gap:.5rem}
 .group {
   display: flex; 
@@ -70,7 +73,7 @@ function loadScript(url, retries = 3, delay = 1000) {
  */
 export async function loadDependencies() {
   try {
-    const loadPromises = DEPENDENCIES.map((dep) => loadScript(dep));
+    const loadPromises = DEPENDENCIES.map((dep) => loadScript(CDN + dep));
     await Promise.all(loadPromises);
   } catch (error) {
     console.error("Failed to load dependencies:", error);

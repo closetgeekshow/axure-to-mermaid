@@ -1,7 +1,8 @@
+import { createElement } from '../utils/dom.js'
 
 export class ButtonFactory {
   static createButton(config) {
-    const button = document.createElement('button');
+    const button = createElement('button','');
     button.className = config.className;
     button.dataset.buttonType = config.type;
     button.dataset.action = config.action;

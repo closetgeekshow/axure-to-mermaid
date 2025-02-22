@@ -1,6 +1,6 @@
-import { buttonConfig, closeIcon } from "../config/buttonConfig.js";
+import { buttonConfig, getIcon } from "../config/buttonConfig.js";
 import { baseCSS, fallbackCSS } from "../config/constants.js";
-import { createElement, copyToClipboard } from "../utils/dom.js";
+import { createElement, copyToClipboard, createIconEl } from "../utils/dom.js";
 import { asFile, mermaidStore } from "../utils/mermaidUtils.js";
 
 /**
@@ -19,14 +19,13 @@ export class Toolbar {
     handlePngUrl: async () => await asFile.png(),
   };
 
-    // Declare private field at class level
-    #buttons = new Map();
+  // Declare private field at class level
+  #buttons = new Map();
 
   constructor(processor, sitemapArray) {
     this.processor = processor;
     this.sitemapArray = sitemapArray;
-    this.currentMermaidText = "";
-
+    
     this.container = createElement("div", "", {
       id: "xaxGeneric",
     });
@@ -43,11 +42,10 @@ export class Toolbar {
     document.body.appendChild(this.container);
 
     // Single event listener for all buttons
-    this.toolbar.addEventListener('click', (e) => this.handleToolbarClick(e));
+    this.toolbar.addEventListener("click", (e) => this.handleToolbarClick(e));
   }
-
   handleToolbarClick(event) {
-    const button = event.target.closest('button');
+    const button = event.target.closest("button");
     if (!button) return;
 
     const action = button.dataset.action;
@@ -62,7 +60,7 @@ export class Toolbar {
    */
   generateFullSitemap() {
     const diagram = this.processor.generateMermaidMarkup();
-    this.mermaidStore.setText(diagram);
+    mermaidStore.setText(diagram);
     this.enableExportButtons();
   }
 
@@ -73,7 +71,7 @@ export class Toolbar {
    */
   generateSubtreeSitemap(nodeId) {
     const diagram = this.processor.generatePartialMarkup(nodeId);
-    this.mermaidStore.setText(diagram);
+    mermaidStore.setText(diagram);
     this.enableExportButtons();
   }
 
@@ -131,12 +129,8 @@ export class Toolbar {
         });
 
         // Add each icon from the button config
-        button.icons.forEach((iconUrl) => {
-          const iconEl = createElement("img", "", {
-            src: iconUrl,
-            alt: "", // Empty alt since we have aria-label on button
-            className: "button-icon",
-          });
+        button.icons.forEach((name) => {
+          const iconEl = createIconEl(getIcon(name),"","button-icon");
           iconContainer.appendChild(iconEl);
         });
 
@@ -162,11 +156,7 @@ export class Toolbar {
       ariaLabel: "Close toolbar",
     });
     // Add close icon
-    const iconEl = createElement("img", "", {
-      src: closeIcon,
-      alt: "",
-      className: "button-icon",
-    });
+    const iconEl = createIconEl(getIcon("close--large"),"Close","button-icon");
 
     iconContainer.appendChild(iconEl);
     closeButton.appendChild(iconContainer);

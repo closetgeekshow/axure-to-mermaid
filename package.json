@@ -11,7 +11,7 @@
   "main": "axure-to-mermaid.js",
   "scripts": {
     "embed-assets": "node ./build/embedAssets.js",
-    "bundle": "esbuild ./src/inject.js --bundle --outfile=./dist/axure-to-mermaid.bundle.js",
+    "bundle": "esbuild ./src/index.js --bundle --outfile=./dist/axure-to-mermaid.bundle.js",
     "bookmarklet": "node ./build/processBookmarklet.js ./dist/axure-to-mermaid.bundle.js ./dist/axure-to-mermaid.bookmarklet.js",
     "build": "npm run embed-assets && npm run bundle && npm run bookmarklet && npm run size-report",
     "size-report": "ls -lh ./dist | awk 'BEGIN {print \"Size\\tFile\\n----\\t----\"} NR>1 {print $5\"\\t\"$9}' | column -t"
