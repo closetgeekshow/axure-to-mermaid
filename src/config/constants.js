@@ -2,7 +2,7 @@
  * URLs of required external JavaScript libraries
  * @constant {string[]}
  */
-export const CDN = "https://cdn.jsdelivr.net/npm/"
+export const CDN = "https://cdn.jsdelivr.net/npm/";
 
 export const DEPENDENCIES = [
   "pako@2.1.0/dist/pako.min.js",
@@ -10,7 +10,10 @@ export const DEPENDENCIES = [
 ];
 
 export const baseCSS = `
-svg path[fill="currentColor"] {fill:#fff}
+.button-icon {
+  filter: brightness(0) saturate(100%) invert(1);
+}
+
 .toolbar { visibility: hidden;position: fixed;display: flex;flex-direction: row;bottom: 1rem;right:1rem;padding:.625rem;z-index: 1000;gap:.5rem}
 .group {
   display: flex; 

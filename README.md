@@ -32,22 +32,6 @@ This bookmarklet script allows you to convert [Axure RP](https://axure.com) prot
 > Features that use Mermaid.Ink will send your chart content to a third-party server.
 > If you want to keep things entirely private only use the Copy or TXT buttons and generate the chart yourself using [Mermaid.Live](https://mermaid.live/edit), Mermaid CLI or the [Mermaid JS library](https://github.com/mermaid-js/mermaid).
 
-## Example
-<details>
- <summary>This Axure Sitemap...</summary>
- <img src="sitemap-example.png">
-</details>
- 
-<details>
- <summary>becomes this text...</summary>
- <img src="https://github.com/user-attachments/assets/62f2a973-e8cf-478d-afaf-cbade894274a" width="550">
-</details>
-
-<details>
- <summary>which Generates this image</summary>
- <img src="https://github.com/user-attachments/assets/7169cff1-646c-4fd2-83ab-61e7040ba831" width="550">
-</details>
-
 ## "Dependencies"
 All dependency scripts are injected from CDN sources to keep bookmarklet at a reasonable size.
 * [js-base64](https://github.com/dankogai/js-base64)
@@ -65,7 +49,7 @@ All dependency scripts are injected from CDN sources to keep bookmarklet at a re
 * styling based on name, hierarchy position, etc.
 * annotate the source URL on diagram
 * Start From Parent Folder generation method
-* configuration options (white background, mermaid config settings)
+* configuration options (white background, mermaid config settings, copy on generate)
 * responsive toolbar
 * Convert Axure Flowcharts to mermaid (this actually looks pretty easy or at least not super hard)
  

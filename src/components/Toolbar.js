@@ -1,4 +1,4 @@
-import { buttonConfig, getIcon } from "../config/buttonConfig.js";
+import { buttonConfig, getSvgUrl } from "../config/buttonConfig.js";
 import { baseCSS, fallbackCSS } from "../config/constants.js";
 import { createElement, copyToClipboard, createIconEl } from "../utils/dom.js";
 import { asFile, mermaidStore } from "../utils/mermaidUtils.js";
@@ -130,7 +130,7 @@ export class Toolbar {
 
         // Add each icon from the button config
         button.icons.forEach((name) => {
-          const iconEl = createIconEl(getIcon(name),"","button-icon");
+          const iconEl = createIconEl(getSvgUrl(name),"","button-icon");
           iconContainer.appendChild(iconEl);
         });
 
@@ -155,8 +155,8 @@ export class Toolbar {
       onclick: () => this.unload(),
       ariaLabel: "Close toolbar",
     });
-    // Add close icon
-    const iconEl = createIconEl(getIcon("close--large"),"Close","button-icon");
+
+    const iconEl = createIconEl(getSvgUrl("close--large"),"","button-icon");
 
     iconContainer.appendChild(iconEl);
     closeButton.appendChild(iconContainer);

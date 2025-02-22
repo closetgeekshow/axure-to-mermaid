@@ -1,7 +1,5 @@
-import { notify } from "../utils/dom.js";
 import { SitemapProcessor } from "./SitemapProcessor.js";
 import { EventEmitter } from "../utils/EventEmitter.js";
-import { loadDependencies } from "../config/constants.js";
 
 /**
  * @class AxureToMermaid

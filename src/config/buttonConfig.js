@@ -1,6 +1,6 @@
 const iconCDN = "https://cdn.jsdelivr.net/npm/@carbon/icons/svg/32/";
 
-export function getIcon(name) {
+export function getSvgUrl(name) {
   return `${iconCDN}${name}.svg`
 }
 
@@ -39,17 +39,17 @@ export const buttonConfig = {
       buttons: [
         {
           text: "TXT",
-          icons: ["txt","download"],
+          icons: ["TXT","download"],
           action: "handleTxtDownload",
         },
         {
           text: "SVG",
-          icons: ["svg","download"],
+          icons: ["SVG","download"],
           action: "handleSvgDownload",
         },
         {
           text: "PNG",
-          icons: ["png","download"],
+          icons: ["PNG","download"],
           action: "handlePngDownload",
         },
       ],
@@ -60,12 +60,12 @@ export const buttonConfig = {
       buttons: [
         {
           text: "SVG",
-          icons: ["svg","new-tab"],
+          icons: ["SVG","new-tab"],
           action: "handleSvgUrl",
         },
         {
           text: "PNG",
-          icons: ["icons","new-tab"],
+          icons: ["PNG","new-tab"],
           action: "handlePngUrl",
         },
       ],

@@ -39,17 +39,15 @@ export function createElement(elementType, textContent = "", props = {}) {
     throw error;
   }
 }
-
-export function createIconEl(url, alt="", className="") {
-  createElement("object", "", {
-    data: url,
-    ariaLabel: alt,
+export function createIconEl(url, alt = "", className = "") {
+  // Create an img element for the SVG
+  return createElement("img", "", {
+    src: url,
     className: className,
-    type: "image/svg+xml",
-    role: "img",
+    alt: alt,
+    role: "img"
   });
 }
-
 /**
  * Copies the specified text to the clipboard
  * @function copyToClipboard
