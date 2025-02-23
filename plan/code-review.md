@@ -208,7 +208,6 @@ scheduler(() => { /* your code */ });
 
 3. The folder structure is okay, but move components that belong together into feature folders.
 
-4. Use TypeScript. Yes, I said it. Even I've come around to static typing.
 
 And for God's sake, add some proper documentation. Not those useless JSDoc comments that just restate the obvious, but actual documentation about WHY things are done the way they are.
 

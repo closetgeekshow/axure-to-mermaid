@@ -1,19 +1,11 @@
-import { SitemapProcessor } from "./SitemapProcessor.js";
+import { createProcessor } from "./SitemapProcessor.js";
 import { EventEmitter } from "../utils/EventEmitter.js";
 
-/**
- * @class AxureToMermaid
- * @description Initializes the Axure to Mermaid conversion process
- */
-export class AxureToMermaid {
-  constructor(deps = {}) {
-    this.processor = deps.processor || new SitemapProcessor();
-    this.sitemapArray = deps.sitemapArray;
-    this.toolbarFactory = deps.toolbarFactory;
-    this.eventBus = deps.eventBus || new EventEmitter();
-  }
-
-  static async waitForAxureDocument(timeout = 10000) {
+export const createAxureToMermaid = (deps = {}) => {
+  const processor = deps.processor || createProcessor();
+  const eventBus = deps.eventBus || new EventEmitter();
+  
+  const waitForAxureDocument = async (timeout = 10000) => {
     if (top?.$axure?.document) return;
 
     const observerPromise = new Promise((resolve) => {
@@ -31,35 +23,28 @@ export class AxureToMermaid {
     );
 
     return Promise.race([observerPromise, timeoutPromise]);
-  }
+  };
 
-  static async getSitemapArray() {
-    await this.waitForAxureDocument();
+  const getSitemapArray = async () => {
+    await waitForAxureDocument();
     return top?.$axure?.document?.sitemap?.rootNodes;
-  }
+  };
 
-  static async create(config = {}) {
-    const deps = {
-      processor: config.processor || new SitemapProcessor(), // Ensure processor is created
-      sitemapArray: config.sitemapArray || await this.getSitemapArray(),
-      toolbarFactory: config.toolbarFactory,
-      eventBus: config.eventBus
-    };
-    const instance = new AxureToMermaid(deps);
-    await instance.initialize();
-    return instance;
-  }
-
-  async initialize() {
-    if (!this.sitemapArray) {
+  const initialize = async () => {
+    const sitemapArray = deps.sitemapArray || await getSitemapArray();
+    if (!sitemapArray) {
       throw new Error('Sitemap array is required for initialization');
     }
-    await this.processor.initialize(this.sitemapArray);
+    await processor.initialize(sitemapArray);
     
-    if (this.toolbarFactory) {
-      this.toolbarFactory.processor = this.processor;
-      this.toolbarFactory.sitemapArray = this.sitemapArray;
+    if (deps.toolbarFactory) {
+      deps.toolbarFactory.processor = processor;
+      deps.toolbarFactory.sitemapArray = sitemapArray;
     }
-    return this;
-  }
-}
+    return { processor, eventBus };
+  };
+
+  return {
+    initialize
+  };
+};

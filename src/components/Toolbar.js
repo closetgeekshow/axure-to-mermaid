@@ -1,217 +1,30 @@
 import { buttonConfig, getSvgUrl } from "../config/buttonConfig.js";
 import { baseCSS, fallbackCSS } from "../config/constants.js";
 import { createElement, copyToClipboard, createIconEl } from "../utils/dom.js";
-import { asFile, mermaidStore } from "../utils/mermaidUtils.js";
+import { asFile } from "../utils/mermaidUtils.js";
+import { mermaidStore } from "../store/MermaidStore.js";
 
-/**
- * @class Toolbar
- * @description Creates and manages the UI toolbar for sitemap visualization controls
- */
-export class Toolbar {
-  #actionHandlers = {
-    handleAll: () => this.handleAllClick(),
-    handleStartHere: () => this.handleStartHereClick(),
-    handleCopy: () => copyToClipboard(),
-    handleTxtDownload: () => asFile.txt(),
-    handleSvgDownload: async () => await asFile.svg(true),
-    handlePngDownload: async () => await asFile.png(true),
-    handleSvgUrl: async () => await asFile.svg(),
-    handlePngUrl: async () => await asFile.png(),
-  };
+export const createToolbar = (processor) => {
+  // Shared state at top level of closure
+  const buttons = new Map();
+  let container, shadow, toolbar;
 
-  // Declare private field at class level
-  #buttons = new Map();
-
-  constructor(processor, sitemapArray) {
-    this.processor = processor;
-    this.sitemapArray = sitemapArray;
-    
-    this.container = createElement("div", "", {
-      id: "xaxGeneric",
-    });
-
-    this.shadow = this.container.attachShadow({ mode: "open" });
-    this.loadCSSInShadow("https://matcha.mizu.sh/matcha.css");
-
-    this.toolbar = createElement("div", "", {
-      className: "toolbar bd-default bg-muted",
-    });
-
-    this.toolbar.appendChild(this.createButtons());
-    this.shadow.appendChild(this.toolbar);
-    document.body.appendChild(this.container);
-
-    // Single event listener for all buttons
-    this.toolbar.addEventListener("click", (e) => this.handleToolbarClick(e));
-  }
-  handleToolbarClick(event) {
-    const button = event.target.closest("button");
-    if (!button) return;
-
-    const action = button.dataset.action;
-    if (action && this.#actionHandlers[action]) {
-      this.#actionHandlers[action]();
-    }
-  }
-
-  /**
-   * Generates a complete sitemap diagram
-   * @returns {void}
-   */
-  generateFullSitemap() {
-    const diagram = this.processor.generateMermaidMarkup();
-    mermaidStore.setText(diagram);
-    this.enableExportButtons();
-  }
-
-  /**
-   * Generates a subtree diagram starting from selected node
-   * @param {string} nodeId - Starting node identifier
-   * @returns {void}
-   */
-  generateSubtreeSitemap(nodeId) {
-    const diagram = this.processor.generatePartialMarkup(nodeId);
-    mermaidStore.setText(diagram);
-    this.enableExportButtons();
-  }
-
-  loadCSSInShadow(url) {
-    // Always add base styles
-    const baseStyle = document.createElement("style");
-    baseStyle.textContent = baseCSS;
-    this.shadow.appendChild(baseStyle);
-
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = url;
-    link.onload = () => {
-      this.toolbar.style.visibility = "visible"; // Show toolbar after CSS loads
-    };
-    link.onerror = () => {
-      console.error("Failed to load CSS, using fallback styles");
-
-      const fallbackStyle = document.createElement("style");
-      fallbackStyle.textContent = fallbackCSS;
-      this.shadow.appendChild(fallbackStyle);
-    };
-    this.shadow.appendChild(link);
-  }
-
-  createButtons() {
-    const fragment = document.createDocumentFragment();
-
-    buttonConfig.groups.forEach((group) => {
-      const groupEl = createElement("div", "", {
-        className: "group",
-      });
-      groupEl.appendChild(createElement("span", group.label));
-
-      const buttonContainer = createElement("div", "", {
-        className: "btnContainer",
-      });
-
-      group.buttons.forEach((button) => {
-        // Create button with empty text content initially
-        const buttonEl = createElement("button", "", {
-          disabled: group.type !== "generate",
-          dataset: {
-            buttonType: group.type,
-          },
-          onclick: () => this.#actionHandlers[button.action](),
-          // Add aria-label for accessibility
-          ariaLabel: button.text,
-        });
-        buttonEl.classList.add("fg-muted");
-
-        // Create icon container
-        const iconContainer = createElement("span", "", {
-          className: "icon-container",
-        });
-
-        // Add each icon from the button config
-        button.icons.forEach((name) => {
-          const iconEl = createIconEl(getSvgUrl(name),"","button-icon");
-          iconContainer.appendChild(iconEl);
-        });
-
-        // Add icon container to button
-        buttonEl.appendChild(iconContainer);
-
-        // Store button reference
-        this.#buttons.set(button.action, buttonEl);
-
-        buttonContainer.appendChild(buttonEl);
-      });
-
-      groupEl.appendChild(buttonContainer);
-      fragment.appendChild(groupEl);
-    });
-
-    const iconContainer = createElement("span", "", {
-      className: "icon-container",
-    });
-    const closeButton = createElement("button", "", {
-      className: "close fg-muted",
-      onclick: () => this.unload(),
-      ariaLabel: "Close toolbar",
-    });
-
-    const iconEl = createIconEl(getSvgUrl("close--large"),"","button-icon");
-
-    iconContainer.appendChild(iconEl);
-    closeButton.appendChild(iconContainer);
-    fragment.appendChild(closeButton);
-
-    return fragment;
-  }
-
-  enableExportButtons() {
-    // Update to use Map
-    for (const [_, button] of this.#buttons) {
+  const enableExportButtons = () => {
+    for (const [_, button] of buttons) {
       if (button.dataset.buttonType !== "generate") {
         button.disabled = false;
       }
     }
-  }
+  };
 
-  /**
-   * @public
-   * @method handleAllClick
-   * @description Processes complete sitemap and generates Mermaid markup
-   */
-  handleAllClick() {
-    // No need to reprocess, just generate markup
-    mermaidStore.setText(this.processor.generateMermaidMarkup());
-    this.enableExportButtons();
-  }
-
-  /**
-   * @public
-   * @method handleStartHereClick
-   * @description Processes sitemap from current node and generates Mermaid markup
-   */
-  handleStartHereClick() {
-    const currentId = this.getCurrentNodeId();
-    if (currentId) {
-      // Generate markup for subtree using stored nodes
-      mermaidStore.setText(this.processor.generateMermaidMarkup(currentId));
-      this.enableExportButtons();
-    }
-  }
-
-  getCurrentNodeId() {
+  const getCurrentNodeId = () => {
     let currentId = top?.$axure?.page?.shortId;
-
     if (!currentId) {
-      // Access the query string from the top window
       const parentUrlParams = new URLSearchParams(top.location.search);
       currentId = parentUrlParams.get("id");
     }
-
     if (!currentId) {
-      // Deep search in $axure.document.sitemap.rootNodes
       const pageParam = new URLSearchParams(top.location.search).get("p");
-
       if (pageParam) {
         const findNodeByUrl = (nodes) => {
           for (const node of nodes) {
@@ -220,9 +33,7 @@ export class Toolbar {
             }
             if (node.children) {
               const found = findNodeByUrl(node.children);
-              if (found) {
-                return found;
-              }
+              if (found) return found;
             }
           }
           return null;
@@ -230,15 +41,140 @@ export class Toolbar {
         currentId = findNodeByUrl($axure.document.sitemap.rootNodes);
       }
     }
-
     return currentId;
-  }
-  /**
-   * @public
-   * @method unload
-   * @description Removes toolbar from DOM
-   */
-  unload() {
-    this.toolbar?.parentNode?.removeChild(this.toolbar);
-  }
-}
+  };
+
+  const actionHandlers = {
+    handleAll: () => {
+      const diagram = processor.generateMermaidMarkup();
+      mermaidStore.setState({ diagram });
+      enableExportButtons();
+    },
+    handleStartHere: () => {
+      const currentId = getCurrentNodeId();
+      if (currentId) {
+        const diagram = processor.generateMermaidMarkup(currentId);
+        mermaidStore.setState({ diagram });
+        enableExportButtons();
+      }
+    },
+    handleCopy: () => copyToClipboard(),
+    handleTxtDownload: () => asFile.txt(),
+    handleSvgDownload: async () => await asFile.svg(true),
+    handlePngDownload: async () => await asFile.png(true),
+    handleSvgUrl: async () => await asFile.svg(),
+    handlePngUrl: async () => await asFile.png(),
+  };
+
+  const loadCSSInShadow = (container) => {
+    const baseStyle = createElement("style", baseCSS);
+    container.appendChild(baseStyle);
+
+    const link = createElement("link", "", {
+      rel: "stylesheet",
+      href: "https://matcha.mizu.sh/matcha.css",
+      onload: () => toolbar.style.visibility = "visible",
+      onerror: () => {
+        const fallbackStyle = createElement("style", fallbackCSS);
+        container.appendChild(fallbackStyle);
+      }
+    });
+    container.appendChild(link);
+  };
+
+  const createButtons = () => {
+    const fragment = document.createDocumentFragment();
+
+    buttonConfig.groups.forEach((group) => {
+      const groupEl = createElement("div", "", { className: "group" });
+      groupEl.appendChild(createElement("span", group.label));
+
+      const buttonContainer = createElement("div", "", {
+        className: "btnContainer",
+      });
+
+      group.buttons.forEach((button) => {
+        const buttonEl = createElement("button", "", {
+          disabled: group.type !== "generate",
+          dataset: {
+            buttonType: group.type,
+            action: button.action,
+          },
+          ariaLabel: button.text,
+          className: "fg-muted",
+        });
+
+        const iconContainer = createElement("span", "", {
+          className: "icon-container",
+        });
+        button.icons.forEach((name) => {
+          iconContainer.appendChild(
+            createIconEl(getSvgUrl(name), "", "button-icon")
+          );
+        });
+
+        buttonEl.appendChild(iconContainer);
+        buttons.set(button.action, buttonEl);
+        buttonContainer.appendChild(buttonEl);
+      });
+
+      groupEl.appendChild(buttonContainer);
+      fragment.appendChild(groupEl);
+    });
+
+    const closeButton = createCloseButton();
+    fragment.appendChild(closeButton);
+
+    return fragment;
+  };
+
+  const createCloseButton = () => {
+    const iconContainer = createElement("span", "", {
+      className: "icon-container",
+    });
+    const closeButton = createElement("button", "", {
+      className: "close fg-muted",
+      ariaLabel: "Close toolbar",
+    });
+
+    iconContainer.appendChild(
+      createIconEl(getSvgUrl("close--large"), "", "button-icon")
+    );
+    closeButton.appendChild(iconContainer);
+    closeButton.addEventListener("click", unload);
+    return closeButton;
+  };
+
+  const handleToolbarClick = (event) => {
+    const button = event.target.closest("button");
+    if (!button) return;
+
+    const action = button.dataset.action;
+    if (action && actionHandlers[action]) {
+      actionHandlers[action]();
+    }
+  };
+
+  const unload = () => {
+    if (container && container.parentNode) {
+      container.parentNode.removeChild(container);
+    }
+  };
+
+  // Initialize toolbar
+  container = createElement("div", "", { id: "xaxGeneric" });
+  shadow = container.attachShadow({ mode: "open" });
+  toolbar = createElement("div", "", {
+    className: "toolbar bd-default bg-muted",
+  });
+
+  loadCSSInShadow(shadow);
+  toolbar.appendChild(createButtons());
+  toolbar.addEventListener("click", handleToolbarClick);
+  shadow.appendChild(toolbar);
+  document.body.appendChild(container);
+
+  return {
+    unload,
+  };
+};

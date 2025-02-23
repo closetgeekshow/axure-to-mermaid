@@ -1,95 +1,47 @@
-/**
- * @class SitemapProcessor
- * @description Processes sitemap nodes and generates Mermaid markup
- */
-export class SitemapProcessor {
-  #nodeCache = new Map();
-  #processedNodes = null;
-  #nodeMap = new Map();
+const createSitemapProcessor = () => {
+  const nodeCache = new Map()
+  const nodeMap = new Map()
+  let processedNodes = null
 
-  /**
-   * Initializes the processor with sitemap nodes
-   * @param {Array} nodes - Array of sitemap nodes
-   * @returns {Array} Processed nodes
-   */
-  initialize(nodes) {
-    if (this.#processedNodes) {
-      return this.#processedNodes;
-    }
-    this.#processedNodes = this.processSitemap(nodes);
-    this.#processedNodes.forEach(node => {
-      this.#nodeCache.set(node.id, node);
-      this.#nodeMap.set(node.id, node);
-    });
-    return this.#processedNodes;
-  }
-
-  getNode(id) {
-    return this.#nodeCache.get(id);
-  }
-
-  /**
-   * Processes sitemap nodes into flat structure
-   * @param {Array} nodes - Array of sitemap nodes
-   * @param {string} parentId - Parent node ID
-   * @returns {Array} Processed nodes
-   */
-  processSitemap(nodes, parentId = null) {
+  const processSitemap = (nodes, parentId = null) => {
     return nodes.flatMap(node => {
       const id = node.id || `f${(parentId || node.pageName).split('').reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 0)}`;
       return [
         { id, name: node.pageName, parentId, type: node.type },
-        ...(node.children ? this.processSitemap(node.children, id) : [])
+        ...(node.children ? processSitemap(node.children, id) : [])
       ];
     });
   }
 
-  /**
-   * Generates Mermaid markup from processed nodes
-   * @param {string} startNodeId - Optional starting node ID for subtree
-   * @returns {string} Mermaid markup text
-   */
-  generateMermaidMarkup(startNodeId = null) {
-    if (!this.#processedNodes) {
-      throw new Error('Sitemap not initialized. Call initialize() first.');
+  const initialize = (nodes) => {
+    if (processedNodes) {
+      return processedNodes;
     }
-
-    const relevantNodes = startNodeId 
-      ? this.#getSubtreeNodes(startNodeId)
-      : this.#processedNodes;
-
-    return this.#generateMarkup(relevantNodes);
+    processedNodes = processSitemap(nodes);
+    processedNodes.forEach(node => {
+      nodeCache.set(node.id, node);
+      nodeMap.set(node.id, node);
+    });
+    return processedNodes;
   }
 
-  /**
-   * Gets nodes in subtree starting from given node
-   * @private
-   */
-  #getSubtreeNodes(startNodeId) {
-    const startNode = this.#nodeMap.get(startNodeId);
-    return this.#processedNodes.filter(node => 
-      this.#isNodeInSubtree(node, startNode)
+  const getSubtreeNodes = (startNodeId) => {
+    const startNode = nodeMap.get(startNodeId);
+    return processedNodes.filter(node => 
+      isNodeInSubtree(node, startNode)
     );
   }
 
-  /**
-   * Checks if node is in subtree
-   * @private
-   */
-  #isNodeInSubtree(node, startNode) {
+  const isNodeInSubtree = (node, startNode) => {
     let current = node;
     while (current) {
       if (current.id === startNode.id) return true;
-      current = this.#nodeMap.get(current.parentId);
+      current = nodeMap.get(current.parentId);
     }
     return false;
   }
 
-  /**
-   * Generates the actual Mermaid markup
-   * @private
-   */
-  #generateMarkup(nodes) {
+  const generateMarkup = (nodes) => {
     const groups = nodes.reduce((acc, node) => {
       const tier = acc.get(node.parentId) || new Set();
       tier.add(`${node.id}["${node.name}"]${node.parentId ? `\n      ${node.parentId} --- ${node.id}` : ''}`);
@@ -108,13 +60,28 @@ export class SitemapProcessor {
       `  class ${[...Array(groups.size)].map((_, i) => `tier${i}`).join(',')} containers`
     ].join('\n');
   }
-  /**
-   * Finds the current node in the sitemap
-   * @public
-   * @param {string} currentId - ID of the current node
-   * @returns {Object|null} The found node or null if not found
-   */
-  findCurrentNode(currentId) {
-    return this.#nodeMap.get(currentId) || null;
+
+  const generateMermaidMarkup = (startNodeId = null) => {
+    if (!processedNodes) {
+      throw new Error('Sitemap not initialized. Call initialize() first.');
+    }
+
+    const relevantNodes = startNodeId 
+      ? getSubtreeNodes(startNodeId)
+      : processedNodes;
+
+    return generateMarkup(relevantNodes);
+  }
+
+  const findCurrentNode = (currentId) => {
+    return nodeMap.get(currentId) || null;
+  }
+
+  return {
+    initialize,
+    generateMermaidMarkup,
+    findCurrentNode
   }
 }
+
+export const createProcessor = () => createSitemapProcessor()

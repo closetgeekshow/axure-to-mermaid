@@ -25,6 +25,7 @@ import { notify } from "./dom.js";
  * The resulting string can be used in Mermaid.ink URLs to render diagrams
  */
 import { loadDependencies } from "../config/constants.js";
+import { mermaidStore } from '../store/MermaidStore.js';
 
 let dependenciesLoaded = false;
 
@@ -68,7 +69,7 @@ export async function serializeMermaid(mermaidText) {
 
 async function handleExport(type, format, download) {
   try {
-    const encoded = await serializeMermaid(mermaidStore.getText());
+    const encoded = await serializeMermaid(mermaidStore.getState().diagram);
     const baseUrl = `https://mermaid.ink/${format}/pako:${encoded}`;
     const url = format === "img" ? `${baseUrl}?type=${type}` : baseUrl;
 
@@ -89,27 +90,13 @@ async function handleExport(type, format, download) {
   }
 }
 
-async function handleSvgExport(download = false) {
-  return handleExport("svg", "svg", download);
-}
-
-async function handlePngExport(download = false) {
-  return handleExport("png", "img", download);
-}
-
-async function handleTxtExport() {
-  try {
-    await downloadFile(mermaidStore.getText(), "sitemap.txt", "text/plain");
-    notify.success("txt");
-  } catch (error) {
-    notify.error("txt", error);
-  }
-}
-
 export const asFile = {
   svg: async (download = false) => handleExport("svg", "svg", download),
   png: async (download = false) => handleExport("png", "img", download),
-  txt: handleTxtExport,
+  txt: () => {
+    const diagram = mermaidStore.getState().diagram;
+    return downloadFile(diagram, "sitemap.txt", "text/plain");
+  }
 };
 
 /**
@@ -139,15 +126,5 @@ function downloadFile(content, filename, type) {
   });
 }
 
-// Change from factory function to singleton instance
-export const mermaidStore = (() => {
-  let currentText = "";
-  return {
-    setText(text) {
-      currentText = text;
-    },
-    getText() {
-      return currentText;
-    },
-  };
-})();
+// Export store functions directly
+export const { subscribe, setState, getState } = mermaidStore;
