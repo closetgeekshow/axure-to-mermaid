@@ -1,9 +1,8 @@
 import { createProcessor } from "./SitemapProcessor.js";
-import { EventEmitter } from "../utils/EventEmitter.js";
 
 export const createAxureToMermaid = (deps = {}) => {
   const processor = deps.processor || createProcessor();
-  const eventBus = deps.eventBus || EventEmitter.default;
+  const eventBus = deps.eventBus;
   
   const waitForAxureDocument = async (timeout = 10000) => {
     if (top?.$axure?.document) return;

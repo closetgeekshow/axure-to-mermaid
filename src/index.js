@@ -8,12 +8,13 @@
 "use strict";
 
 import { loadDependencies } from "./config/constants.js";
+import { EventEmitter } from "./utils/EventEmitter.js";
+import { mermaidStore } from "./store/MermaidStore.js";
 import { createAxureToMermaid } from "./components/AxureToMermaid.js";
 import { notify } from "./utils/dom.js";
 import { createToolbar } from "./components/Toolbar.js";
-import { EventEmitter } from "./utils/EventEmitter.js";
 
-const eventBus = EventEmitter.default;
+const eventBus = new EventEmitter();
 
 /**
  * Initializes the Axure to Mermaid application.
@@ -29,7 +30,7 @@ async function initialize() {
 
     // Initialize core application with event bus
     const axureToMermaid = await createAxureToMermaid({
-      eventBus
+      eventBus, mermaidStore
     }).initialize();
 
     // Create toolbar with processor reference

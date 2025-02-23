@@ -9,13 +9,11 @@
  *   - `setState(newState)`: Updates the state of the Mermaid store.
  *   - `getState()`: Returns the current state of the Mermaid store.
  *   - `dispose()`: Disposes of the Mermaid store and clears all subscribers.
- *   - `getSnapshot()`: Returns the current state, version, and subscriber count of the Mermaid store.
  */
 const createMermaidStore = (initialState = { diagram: '', settings: {} }) => {
   const subscribers = new Set()
   let state = { ...initialState }
   let isDisposed = false
-  let stateVersion = 0
 
   const validateState = (newState) => {
     if (typeof newState.diagram !== 'string') {
@@ -42,11 +40,7 @@ const createMermaidStore = (initialState = { diagram: '', settings: {} }) => {
       ...(typeof newState === 'function' ? newState(state) : newState)
     }
 
-    if (validateState(updatedState)) {
-      state = updatedState
-      stateVersion++
-      subscribers.forEach(callback => callback(state, stateVersion))
-    }
+    subscribers.forEach(callback => callback(state))
   }
 
   const dispose = () => {
@@ -54,18 +48,11 @@ const createMermaidStore = (initialState = { diagram: '', settings: {} }) => {
     subscribers.clear()
   }
 
-  const getSnapshot = () => ({
-    state: { ...state },
-    version: stateVersion,
-    subscriberCount: subscribers.size
-  })
-
   return {
     subscribe,
     setState,
     getState: () => ({ ...state }),
-    dispose,
-    getSnapshot
+    dispose
   }
 }
 
