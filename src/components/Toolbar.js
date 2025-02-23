@@ -1,20 +1,20 @@
-import { buttonConfig, getSvgUrl } from "../config/buttonConfig.js";
-import { baseCSS, fallbackCSS } from "../config/constants.js";
-import { createElement, copyToClipboard, createIconEl } from "../utils/dom.js";
+import { buttonConfig, BUTTON_TYPES, getSvgUrl } from "../config/buttonConfig.js";
+import { CSS } from "../config/constants.js";
+import { createElement, copyToClipboard, createIconEl, notify, cleanup } from "../utils/dom.js";
 import { asFile } from "../utils/mermaidUtils.js";
 import { mermaidStore } from "../store/MermaidStore.js";
+import { CSSLoader } from "../utils/cssLoader.js";
 
 export const createToolbar = (processor) => {
-  // Shared state at top level of closure
   const buttons = new Map();
   let container, shadow, toolbar;
 
   const enableExportButtons = () => {
-    for (const [_, button] of buttons) {
-      if (button.dataset.buttonType !== "generate") {
+    buttons.forEach((button, _, map) => {
+      if (button.dataset.buttonType !== BUTTON_TYPES.GENERATE) {
         button.disabled = false;
       }
-    }
+    });
   };
 
   const getCurrentNodeId = () => {
@@ -65,21 +65,33 @@ export const createToolbar = (processor) => {
     handleSvgUrl: async () => await asFile.svg(),
     handlePngUrl: async () => await asFile.png(),
   };
+  const loadCSSInShadow = async (shadow) => {  // Change parameter to shadow
+    // Add base styles to shadow root
+    const baseStyle = createElement("style", CSS.base);
+    shadow.appendChild(baseStyle);
 
-  const loadCSSInShadow = (container) => {
-    const baseStyle = createElement("style", baseCSS);
-    container.appendChild(baseStyle);
+    toolbar.style.visibility = 'hidden';
 
-    const link = createElement("link", "", {
-      rel: "stylesheet",
-      href: "https://matcha.mizu.sh/matcha.css",
-      onload: () => toolbar.style.visibility = "visible",
-      onerror: () => {
-        const fallbackStyle = createElement("style", fallbackCSS);
-        container.appendChild(fallbackStyle);
-      }
-    });
-    container.appendChild(link);
+    try {
+      // Load external styles into shadow root
+      const matchaStyle = createElement("link", "", {
+        rel: "stylesheet",
+        href: "https://matcha.mizu.sh/matcha.css"
+      });
+      shadow.appendChild(matchaStyle);
+      
+      await new Promise((resolve, reject) => {
+        matchaStyle.onload = resolve;
+        matchaStyle.onerror = reject;
+      });
+      
+      toolbar.style.visibility = "visible";
+    } catch (error) {
+      const fallbackStyle = createElement("style", CSS.fallback);
+      shadow.appendChild(fallbackStyle);
+      toolbar.style.visibility = "visible";
+      notify.error("Style loading", error);
+    }
   };
 
   const createButtons = () => {
@@ -95,21 +107,22 @@ export const createToolbar = (processor) => {
 
       group.buttons.forEach((button) => {
         const buttonEl = createElement("button", "", {
-          disabled: group.type !== "generate",
+          disabled: group.type !== BUTTON_TYPES.GENERATE,
           dataset: {
             buttonType: group.type,
             action: button.action,
           },
-          ariaLabel: button.text,
+          ariaLabel: button.ariaLabel,
           className: "fg-muted",
         });
 
         const iconContainer = createElement("span", "", {
           className: "icon-container",
         });
+        
         button.icons.forEach((name) => {
           iconContainer.appendChild(
-            createIconEl(getSvgUrl(name), "", "button-icon")
+            createIconEl(getSvgUrl(name), button.ariaLabel, "button-icon")
           );
         });
 
@@ -122,9 +135,7 @@ export const createToolbar = (processor) => {
       fragment.appendChild(groupEl);
     });
 
-    const closeButton = createCloseButton();
-    fragment.appendChild(closeButton);
-
+    fragment.appendChild(createCloseButton());
     return fragment;
   };
 
@@ -157,18 +168,19 @@ export const createToolbar = (processor) => {
 
   const unload = () => {
     if (container && container.parentNode) {
+      cleanup(toolbar);
+      CSSLoader.unload("https://matcha.mizu.sh/matcha.css");
       container.parentNode.removeChild(container);
     }
   };
 
-  // Initialize toolbar
   container = createElement("div", "", { id: "xaxGeneric" });
   shadow = container.attachShadow({ mode: "open" });
   toolbar = createElement("div", "", {
     className: "toolbar bd-default bg-muted",
   });
 
-  loadCSSInShadow(shadow);
+  loadCSSInShadow(shadow);  // Pass shadow instead of container
   toolbar.appendChild(createButtons());
   toolbar.addEventListener("click", handleToolbarClick);
   shadow.appendChild(toolbar);

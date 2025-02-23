@@ -6,6 +6,10 @@
 
 import { mermaidStore } from "../store/MermaidStore.js";
 
+/**
+ * An object containing common ARIA role values for HTML elements.
+ * @type {Object<string, string>}
+ */
 const ARIA_ROLES = {
   button: 'button',
   img: 'img',
@@ -13,6 +17,17 @@ const ARIA_ROLES = {
   dialog: 'dialog'
 };
 
+/**
+ * Creates a new HTML element with the specified type, text content, and properties.
+ * @param {string} elementType - The type of HTML element to create (e.g. 'div', 'button', 'img').
+ * @param {string} [textContent=''] - The text content to set on the element.
+ * @param {Object} [props={}] - An object of properties to set on the element.
+ * @param {Object} [props.style] - An object of CSS styles to apply to the element.
+ * @param {Object} [props.dataset] - An object of data attributes to set on the element.
+ * @param {Object} [props.aria] - An object of ARIA attributes to set on the element.
+ * @param {Object} [props.events] - An object of event listeners to add to the element.
+ * @returns {HTMLElement} The created HTML element.
+ */
 export function createElement(elementType, textContent = "", props = {}) {
   const element = document.createElement(elementType);
   
@@ -42,6 +57,14 @@ export function createElement(elementType, textContent = "", props = {}) {
   return element;
 }
 
+/**
+ * Creates an HTML `span` element that will contain SVG content loaded from the specified URL.
+ * @param {string} url - The URL of the SVG content.
+ * @param {string} [alt=''] - The alternative text for accessibility.
+ * @param {string} [className=''] - The CSS class name to apply to the span.
+ * @returns {HTMLSpanElement} The created span element.
+ * @todo handle icon url injection
+ */
 export function createIconEl(url, alt = "", className = "") {
   return createElement("img", "", {
     src: url,
@@ -49,6 +72,7 @@ export function createIconEl(url, alt = "", className = "") {
     alt,
     role: ARIA_ROLES.img,
     aria: {
+      label: alt,
       hidden: !alt
     }
   });
@@ -65,6 +89,11 @@ export function copyToClipboard() {
     .catch((error) => notify.error("Copy failed", error));
 }
 
+/**
+ * An object with methods for displaying success and error notifications.
+ * The `success` method displays a success notification for 3 seconds, and the `error` method displays an error notification for 5 seconds.
+ * Both methods log the message to the console and return a boolean value indicating the success or failure of the operation.
+ */
 export const notify = {
   success: (message) => {
     const notification = createElement("div", message, {
@@ -92,6 +121,10 @@ export const notify = {
   }
 };
 
+/**
+ * Removes an element from the DOM and cleans up any associated event listeners.
+ * @param {HTMLElement} element - The element to be removed from the DOM.
+ */
 export function cleanup(element) {
   if (!element) return;
   

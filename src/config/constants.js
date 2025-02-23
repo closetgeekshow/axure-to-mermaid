@@ -1,41 +1,81 @@
 /**
  * URLs of required external JavaScript libraries
- * @constant {string[]}
+ * @constant {Object}
  */
-export const CDN = "https://cdn.jsdelivr.net/npm/";
+export const CDN = {
+  BASE: "https://cdn.jsdelivr.net/npm/",
+  DEPENDENCIES: [
+    "pako@2.1.0/dist/pako.min.js",
+    "js-base64@3.7.5/base64.js",
+  ]
+};
 
-export const DEPENDENCIES = [
-  "pako@2.1.0/dist/pako.min.js",
-  "js-base64@3.7.5/base64.js",
-];
-
-export const baseCSS = `
-.button-icon {
-  filter: brightness(0) saturate(100%) invert(1);
-}
-
-.toolbar { visibility: hidden;position: fixed;display: flex;flex-direction: row;bottom: 1rem;right:1rem;padding:.625rem;z-index: 1000;gap:.5rem}
-.group {
-  display: flex; 
-  align-items: center;
-  font-size: .875rem;
-  border-right: 1px solid rgba(0,0,0,0.8);
-  padding-right: .5rem;
-}
-.group:last-child {
-  border-right: none;
-  padding-right: 0;
-}
-.group > span {display:none}
-.btnContainer {display: flex;align-item:center;gap:.125rem}
-.close {height: 1.5rem;width: 1.5rem;display: flex;align-items: center;justify-content: center;margin: auto 0;padding: 0}
-.button-icon {width:1.5rem;height:1.5rem;vertical-align:middle;}
-.icon-container {display:flex;gap:.25rem;align-items:center;}
-button {display:inline-flex;align-items:center;justify-content:center;padding:.375rem;min-height:2rem}
-`;
-export const fallbackCSS = `
-:host {background-color: #f0f0f0;border: 1px solid #ccc;}
-`;
+export const CSS = {
+  base: `
+    
+    .toolbar { 
+      visibility: hidden;
+      position: fixed;
+      display: flex;
+      flex-direction: row;
+      bottom: 1rem;
+      right: 1rem;
+      padding: .625rem;
+      z-index: 1000;
+      gap: .5rem;
+    }
+    .group {
+      display: flex; 
+      align-items: center;
+      font-size: .875rem;
+      border-right: 1px solid rgba(0,0,0,0.8);
+      padding-right: .5rem;
+    }
+    .group:last-child {
+      border-right: none;
+      padding-right: 0;
+    }
+    .group > span {
+      display: none;
+    }
+    .btnContainer {
+      display: flex;
+      align-item: center;
+      gap: .125rem;
+    }
+    .close {
+      height: 1.5rem;
+      width: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: auto 0;
+      padding: 0;
+    }
+    .button-icon {
+      filter: brightness(0) saturate(100%) invert(1);
+      width: 1.5rem;
+      height: 1.5rem;
+      vertical-align: middle;
+    }
+    .icon-container {
+      display: flex;
+      gap: .25rem;
+      align-items: center;
+    }
+    button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: .375rem;
+      min-height: 2rem;
+    }
+  `,
+  fallback: `:host {
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+  }`
+};
 
 /**
  * Dynamically loads a script into the document with retry logic
@@ -51,19 +91,16 @@ function loadScript(url, retries = 3, delay = 1000) {
       const script = document.createElement("script");
       script.type = "text/javascript";
       script.src = url;
-      script.onload = () => resolve();
+      script.onload = resolve;
       script.onerror = () => {
         if (retryCount < retries) {
-          console.warn(`Failed to load ${url}, retrying...`);
           setTimeout(() => attempt(retryCount + 1), delay);
         } else {
           reject(new Error(`Failed to load script: ${url}`));
         }
       };
-
       document.head.appendChild(script);
     };
-
     attempt(0);
   });
 }
@@ -76,7 +113,7 @@ function loadScript(url, retries = 3, delay = 1000) {
  */
 export async function loadDependencies() {
   try {
-    const loadPromises = DEPENDENCIES.map((dep) => loadScript(CDN + dep));
+    const loadPromises = CDN.DEPENDENCIES.map(dep => loadScript(CDN.BASE + dep));
     await Promise.all(loadPromises);
   } catch (error) {
     console.error("Failed to load dependencies:", error);

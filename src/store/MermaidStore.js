@@ -1,3 +1,16 @@
+/**
+ * Creates a Mermaid store that manages the state of a Mermaid diagram.
+ *
+ * @param {Object} [initialState] - The initial state of the Mermaid store.
+ * @param {string} [initialState.diagram] - The initial Mermaid diagram string.
+ * @param {Object} [initialState.settings] - The initial settings for the Mermaid diagram.
+ * @returns {Object} - The Mermaid store instance with the following methods:
+ *   - `subscribe(callback)`: Subscribes a callback function to be called whenever the state changes.
+ *   - `setState(newState)`: Updates the state of the Mermaid store.
+ *   - `getState()`: Returns the current state of the Mermaid store.
+ *   - `dispose()`: Disposes of the Mermaid store and clears all subscribers.
+ *   - `getSnapshot()`: Returns the current state, version, and subscriber count of the Mermaid store.
+ */
 const createMermaidStore = (initialState = { diagram: '', settings: {} }) => {
   const subscribers = new Set()
   let state = { ...initialState }
