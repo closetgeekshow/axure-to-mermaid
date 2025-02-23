@@ -4,10 +4,21 @@ import { createElement, copyToClipboard, createIconEl, notify, cleanup } from ".
 import { asFile } from "../utils/mermaidUtils.js";
 import { mermaidStore } from "../store/MermaidStore.js";
 import { CSSLoader } from "../utils/cssLoader.js";
+import { EventEmitter } from "../utils/EventEmitter.js";
 
 export const createToolbar = (processor) => {
   const buttons = new Map();
   let container, shadow, toolbar;
+  const eventBus = EventEmitter.default;
+
+  // Define unload first since it's referenced in createCloseButton
+  const unload = () => {
+    eventBus.emit('toolbar:unmounting');
+    cleanup(toolbar);
+    CSSLoader.unload("https://matcha.mizu.sh/matcha.css");
+    container.parentNode?.removeChild(container);
+    eventBus.emit('toolbar:unmounted');
+  };
 
   const enableExportButtons = () => {
     buttons.forEach((button, _, map) => {
@@ -15,6 +26,7 @@ export const createToolbar = (processor) => {
         button.disabled = false;
       }
     });
+    eventBus.emit("toolbar:buttonsEnabled");
   };
 
   const getCurrentNodeId = () => {
@@ -46,6 +58,11 @@ export const createToolbar = (processor) => {
 
   const actionHandlers = {
     handleAll: () => {
+      eventBus.emit("user:action", {
+        type: "generate",
+        source: "toolbar",
+        details: { mode: "full" },
+      });
       const diagram = processor.generateMermaidMarkup();
       mermaidStore.setState({ diagram });
       enableExportButtons();
@@ -53,6 +70,11 @@ export const createToolbar = (processor) => {
     handleStartHere: () => {
       const currentId = getCurrentNodeId();
       if (currentId) {
+        eventBus.emit("user:action", {
+          type: "generate",
+          source: "toolbar",
+          details: { mode: "partial", startNodeId: currentId },
+        });
         const diagram = processor.generateMermaidMarkup(currentId);
         mermaidStore.setState({ diagram });
         enableExportButtons();
@@ -65,31 +87,26 @@ export const createToolbar = (processor) => {
     handleSvgUrl: async () => await asFile.svg(),
     handlePngUrl: async () => await asFile.png(),
   };
-  const loadCSSInShadow = async (shadow) => {  // Change parameter to shadow
-    // Add base styles to shadow root
+
+  const loadCSSInShadow = async (shadow) => {
     const baseStyle = createElement("style", CSS.base);
     shadow.appendChild(baseStyle);
 
     toolbar.style.visibility = 'hidden';
 
     try {
-      // Load external styles into shadow root
-      const matchaStyle = createElement("link", "", {
-        rel: "stylesheet",
-        href: "https://matcha.mizu.sh/matcha.css"
-      });
-      shadow.appendChild(matchaStyle);
-      
-      await new Promise((resolve, reject) => {
-        matchaStyle.onload = resolve;
-        matchaStyle.onerror = reject;
-      });
-      
+      // Pass shadow root as target
+      await CSSLoader.load(["https://matcha.mizu.sh/matcha.css"], {
+        timeout: 5000,
+        fallback: CSS.fallback
+      }, shadow);
       toolbar.style.visibility = "visible";
+      eventBus.emit("toolbar:stylesLoaded");
     } catch (error) {
       const fallbackStyle = createElement("style", CSS.fallback);
       shadow.appendChild(fallbackStyle);
       toolbar.style.visibility = "visible";
+      eventBus.emit("toolbar:stylesFallback", { error });
       notify.error("Style loading", error);
     }
   };
@@ -119,7 +136,7 @@ export const createToolbar = (processor) => {
         const iconContainer = createElement("span", "", {
           className: "icon-container",
         });
-        
+
         button.icons.forEach((name) => {
           iconContainer.appendChild(
             createIconEl(getSvgUrl(name), button.ariaLabel, "button-icon")
@@ -166,13 +183,8 @@ export const createToolbar = (processor) => {
     }
   };
 
-  const unload = () => {
-    if (container && container.parentNode) {
-      cleanup(toolbar);
-      CSSLoader.unload("https://matcha.mizu.sh/matcha.css");
-      container.parentNode.removeChild(container);
-    }
-  };
+  // Initialize toolbar
+  eventBus.emit("toolbar:initializing");
 
   container = createElement("div", "", { id: "xaxGeneric" });
   shadow = container.attachShadow({ mode: "open" });
@@ -180,11 +192,13 @@ export const createToolbar = (processor) => {
     className: "toolbar bd-default bg-muted",
   });
 
-  loadCSSInShadow(shadow);  // Pass shadow instead of container
+  loadCSSInShadow(shadow);
   toolbar.appendChild(createButtons());
   toolbar.addEventListener("click", handleToolbarClick);
   shadow.appendChild(toolbar);
   document.body.appendChild(container);
+
+  eventBus.emit("toolbar:mounted");
 
   return {
     unload,

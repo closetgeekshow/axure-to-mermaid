@@ -40,10 +40,12 @@
 
 ## Resource Loading Enhancements
 - [x] Consolidate CSS loading into `CSSLoader` class
+  - [x] Added parallel/sequential loading
+  - [x] Added timeout handling
+  - [x] Added fallback support
+  - [x] Added unload capabilities
+  - [x] Added shadow DOM support
 - [x] Add retry logic to resource loading
-  - [x] Added dependency loading checks
-  - [x] Added export error handling
-  - [x] Added file operation retries
 - [ ] Move embedded assets to proper build process
 - [x] Implement parallel loading for performance
 
@@ -54,6 +56,13 @@
   - [x] Added live regions for notifications
   - [x] Improved alt text handling
 - [ ] Implement proper error boundaries
+
+## Component Communication
+- [x] Implement event bus pattern
+- [x] Add dependency injection
+- [x] Improve error handling
+- [x] Add component lifecycle events
+- [x] Add user action tracking
 
 ## Type Safety & Error Handling
 - [ ] Add JSDoc type definitions  
@@ -71,6 +80,7 @@
   - [x] Organized CDN dependencies
 - [ ] Create proper interfaces for component communication
 - [ ] Add proper documentation about architecture decisions
+
 ## Build Process
 - [ ] Set up proper CSS bundling
 - [ ] Implement proper asset embedding

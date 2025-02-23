@@ -3,7 +3,7 @@ import { EventEmitter } from "../utils/EventEmitter.js";
 
 export const createAxureToMermaid = (deps = {}) => {
   const processor = deps.processor || createProcessor();
-  const eventBus = deps.eventBus || new EventEmitter();
+  const eventBus = deps.eventBus || EventEmitter.default;
   
   const waitForAxureDocument = async (timeout = 10000) => {
     if (top?.$axure?.document) return;
@@ -31,16 +31,20 @@ export const createAxureToMermaid = (deps = {}) => {
   };
 
   const initialize = async () => {
+    eventBus.emit('core:initializing');
+    
     const sitemapArray = deps.sitemapArray || await getSitemapArray();
     if (!sitemapArray) {
+      eventBus.emit('core:error', { 
+        type: 'initialization',
+        message: 'Sitemap array required'
+      });
       throw new Error('Sitemap array is required for initialization');
     }
+
     await processor.initialize(sitemapArray);
+    eventBus.emit('core:ready');
     
-    if (deps.toolbarFactory) {
-      deps.toolbarFactory.processor = processor;
-      deps.toolbarFactory.sitemapArray = sitemapArray;
-    }
     return { processor, eventBus };
   };
 

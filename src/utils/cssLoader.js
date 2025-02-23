@@ -24,7 +24,7 @@ export class CSSLoader {
    * @param {string} [options.fallback=null] - An optional CSS string to use as a fallback if a CSS file fails to load.
    * @returns {Promise<void>} - A promise that resolves when all CSS files have been loaded or an error has occurred.
    */
-  static async load(cssUrls, options = {}) {
+  static async load(cssUrls, options = {}, target = document.head) {
     const {
       timeout = 5000,
       parallel = true,
@@ -52,7 +52,8 @@ export class CSSLoader {
         setTimeout(() => reject(new Error(`Timeout loading CSS: ${url}`)), timeout)
       );
 
-      document.head.appendChild(link);
+      // Append to the provided target directly
+      target.appendChild(link);
       
       try {
         await Promise.race([loadPromise, timeoutPromise]);
@@ -61,16 +62,13 @@ export class CSSLoader {
         if (fallback) {
           const style = document.createElement('style');
           style.textContent = fallback;
-          document.head.appendChild(style);
+          target.appendChild(style);
         }
         throw error;
       }
     };
 
-    // Create an array of promises from the loadStyle calls
     const promises = cssUrls.map(url => loadStyle(url));
-    
-    // Use the appropriate loading method
     return parallel ? Promise.all(promises) : this.loadSequential(promises);
   }
 
