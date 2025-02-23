@@ -10,7 +10,9 @@
  * });
  * emitter.emit('myEvent', { foo: 'bar' });
  */
-export class EventEmitter {  
+export class EventEmitter { 
+  static default = new EventEmitter();
+  
   constructor() {
     this.events = new Map();
     this.disposed = false;

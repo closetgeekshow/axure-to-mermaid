@@ -14,7 +14,7 @@ import { createAxureToMermaid } from "./components/AxureToMermaid.js";
 import { notify } from "./utils/dom.js";
 import { createToolbar } from "./components/Toolbar.js";
 
-const eventBus = new EventEmitter();
+const eventBus = EventEmitter.default;
 
 /**
  * Initializes the Axure to Mermaid application.
