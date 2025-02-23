@@ -6,42 +6,51 @@
 
 import { mermaidStore } from "../store/MermaidStore.js";
 
-/**
- * Creates a new DOM element with specified properties
- * @function createElement
- * @param {string} elementType - The type of element to create
- * @param {string} [textContent=''] - The text content of the element
- * @param {Object} [props={}] - Additional properties to set on the element
- * @returns {HTMLElement} The created DOM element
- */
+const ARIA_ROLES = {
+  button: 'button',
+  img: 'img',
+  alert: 'alert',
+  dialog: 'dialog'
+};
+
 export function createElement(elementType, textContent = "", props = {}) {
-  try {
-    const element = document.createElement(elementType);
-    element.textContent = textContent;
-
-    Object.entries(props).forEach(([key, value]) => {
-      if (key === "style" && typeof value === "object") {
-        Object.assign(element.style, value);
-      } else if (key === "dataset" && typeof value === "object") {
-        Object.assign(element.dataset, value);
-      } else {
-        element[key] = value;
-      }
-    });
-
-    return element;
-  } catch (error) {
-    console.error(`Failed to create ${elementType} element:`, error);
-    throw error;
+  const element = document.createElement(elementType);
+  
+  if (textContent) {
+    const textNode = document.createTextNode(textContent);
+    element.appendChild(textNode);
   }
+
+  Object.entries(props).forEach(([key, value]) => {
+    if (key === "style" && typeof value === "object") {
+      Object.assign(element.style, value);
+    } else if (key === "dataset" && typeof value === "object") {
+      Object.assign(element.dataset, value);
+    } else if (key === "aria" && typeof value === "object") {
+      Object.entries(value).forEach(([ariaKey, ariaValue]) => {
+        element.setAttribute(`aria-${ariaKey}`, ariaValue);
+      });
+    } else if (key === "events" && typeof value === "object") {
+      Object.entries(value).forEach(([event, handler]) => {
+        element.addEventListener(event, handler);
+      });
+    } else {
+      element[key] = value;
+    }
+  });
+
+  return element;
 }
+
 export function createIconEl(url, alt = "", className = "") {
-  // Create an img element for the SVG
   return createElement("img", "", {
     src: url,
-    className: className,
-    alt: alt,
-    role: "img"
+    className,
+    alt,
+    role: ARIA_ROLES.img,
+    aria: {
+      hidden: !alt
+    }
   });
 }
 /**
@@ -50,21 +59,46 @@ export function createIconEl(url, alt = "", className = "") {
  * @param {string} copyText - The text to copy to the clipboard
  */
 export function copyToClipboard() {
-  navigator.clipboard
+  return navigator.clipboard
     .writeText(mermaidStore.getState().diagram)
-    .then(() => {
-      notify.success("Copied to clipboard!");
-    })
-    .catch(() => {
-      notify.error("Failed to copy", "error");
-    });
+    .then(() => notify.success("Copied to clipboard"))
+    .catch((error) => notify.error("Copy failed", error));
 }
 
 export const notify = {
-  success: (type) => console.log(`Successfully exported ${type} file`),
+  success: (message) => {
+    const notification = createElement("div", message, {
+      role: ARIA_ROLES.alert,
+      className: "notification success",
+      aria: { live: "polite" }
+    });
+    document.body.appendChild(notification);
+    setTimeout(() => notification.remove(), 3000);
+    console.log(message);
+    return true;
+  },
+  
   error: (type, error) => {
-    console.warn(`Failed to export ${type} file:`, error);
-    // Return false to allow error handling up the chain
+    const message = `Failed to ${type}: ${error.message}`;
+    const notification = createElement("div", message, {
+      role: ARIA_ROLES.alert,
+      className: "notification error",
+      aria: { live: "assertive" }
+    });
+    document.body.appendChild(notification);
+    setTimeout(() => notification.remove(), 5000);
+    console.error(message);
     return false;
   }
 };
+
+export function cleanup(element) {
+  if (!element) return;
+  
+  // Remove event listeners
+  const clone = element.cloneNode(true);
+  element.parentNode?.replaceChild(clone, element);
+  
+  // Remove from DOM
+  clone.remove();
+}

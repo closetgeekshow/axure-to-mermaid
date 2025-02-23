@@ -18,29 +18,42 @@
 
 ## State Management Updates
 - [x] Create new `MermaidStore.js` class with proper state management
+  - [x] Added state validation
+  - [x] Added versioning and snapshots
+  - [x] Added disposal mechanism
 - [x] Replace current mermaidStore singleton in mermaidUtils.js with new implementation
 - [x] Add subscriber pattern for state changes
 - [x] Move state-dependent UI updates to use subscription model
 - [x] Update `EventEmitter.js` to include static default instance
 - [x] Add proper cleanup methods to EventEmitter
-- [ ] Implement better event delegation in `Toolbar.js` 
+- [ ] Implement better event delegation in `Toolbar.js`
 
 ## Resource Loading Enhancements
-- [ ] Consolidate CSS loading into `CSSLoader` class
-- [ ] Add retry logic to resource loading (already implemented well)
+- [x] Consolidate CSS loading into `CSSLoader` class
+  - [x] Added parallel/sequential loading
+  - [x] Added timeout handling
+  - [x] Added fallback support
+  - [x] Added unload capabilities
+- [x] Add retry logic to resource loading (already implemented well)
 - [ ] Move embedded assets to proper build process
 - [ ] Implement parallel loading for performance
+
 ## DOM Management
-- [ ] Use DocumentFragment for toolbar creation (already implemented)
-- [ ] Add proper cleanup for event listeners
+- [x] Use DocumentFragment for toolbar creation (already implemented)
+- [x] Add proper cleanup for event listeners
+- [x] Add accessibility improvements
+  - [x] Added ARIA roles
+  - [x] Added live regions for notifications
+  - [x] Improved alt text handling
 - [ ] Implement proper error boundaries
-- [ ] Add accessibility improvements
 
 ## Type Safety & Error Handling
-- [ ] Add JSDoc type definitions
+- [ ] Add JSDoc type definitions  
+  - [x] Add JSDoc type definitions for DOM utilities
 - [ ] Implement proper error boundaries
 - [ ] Add logging service
 - [ ] Add validation for critical data structures
+  - [x] Add validation for critical DOM operations
 
 ## Code Organization
 - [ ] Move components into feature folders
